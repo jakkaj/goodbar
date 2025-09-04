@@ -67,3 +67,12 @@ clean:
 # Tail application logs
 log-tail:
   tail -f "$HOME/Library/Logs/goodbar/app.log"
+
+# ---------- Docs ----------
+# Copy CLAUDE.md to AGENTS.md
+agents-sync:
+  mkdir -p .github
+  cp CLAUDE.md AGENTS.md
+  cp CLAUDE.md .github/copilot-instructions.md
+  @echo "✓ AGENTS.md updated from CLAUDE.md"
+  @echo "✓ .github/copilot-instructions.md updated from CLAUDE.md"

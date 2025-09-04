@@ -48,12 +48,12 @@ This plan establishes the foundational Flutter macOS application structure for t
 
 | #   | Status | Task | Success Criteria | Notes |
 |-----|--------|------|-----------------|-------|
-| 2.1 | [ ] | Write test for Result model | Test file `test/core/models/result_test.dart` verifies Result.success and Result.failure behavior | |
-| 2.2 | [ ] | Create feature folder structure | Folders created: lib/src/features/, lib/src/core/, lib/src/platform/ as per architecture doc | |
-| 2.3 | [ ] | Implement Result model with Freezed | `lib/src/core/models/result.dart` with Result<T, E> union type working | |
-| 2.4 | [ ] | Write test for logger service | Test verifies Log.scoped creates logger with correct tag and log levels | |
-| 2.5 | [ ] | Implement logger service | `lib/src/core/logger/logger.dart` with Log class as specified in architecture | |
-| 2.6 | [ ] | Run build_runner and verify generation | `just gen` generates .freezed.dart and .g.dart files successfully | |
+| 2.1 | [x] | Write test for Result model | Test file `test/core/models/result_test.dart` verifies Result.success and Result.failure behavior | Comprehensive tests with pattern matching [^5] |
+| 2.2 | [x] | Create feature folder structure | Folders created: lib/src/features/, lib/src/core/, lib/src/platform/ as per architecture doc | Created all folders with proper nesting [^6] |
+| 2.3 | [x] | Implement Result model with Freezed | `lib/src/core/models/result.dart` with Result<T, E> union type working | Freezed union type implemented [^7] |
+| 2.4 | [x] | Write test for logger service | Test verifies Log.scoped creates logger with correct tag and log levels | Tests verify tagging and all log levels [^8] |
+| 2.5 | [x] | Implement logger service | `lib/src/core/logger/logger.dart` with Log class as specified in architecture | Logger with file + console output [^9] |
+| 2.6 | [x] | Run build_runner and verify generation | `just gen` generates .freezed.dart and .g.dart files successfully | Generated result.freezed.dart successfully [^10] |
 
 ---
 
@@ -161,3 +161,15 @@ This plan establishes the foundational Flutter macOS application structure for t
 [^3]: Modified [`file:pubspec.yaml`](../../../pubspec.yaml#L57-L65) to add dev dependencies: build_runner, riverpod_generator, freezed, json_serializable, mocktail, and golden_toolkit packages.
 
 [^4]: Created [`file:justfile`](../../../justfile) with all essential commands. User modified it to rename `bootstrap` to `get` and added `gen` dependency to `run` command.
+
+[^5]: Created [`file:test/core/models/result_test.dart`](../../../test/core/models/result_test.dart) with comprehensive tests for Result type including pattern matching with when/map, type safety verification, and multiple type parameter tests.
+
+[^6]: Created folder structure using mkdir: `lib/src/core/{models,logger,errors,utils}`, `lib/src/features/{taskbar,pins,running,profiles,jumplists}`, `lib/src/platform/{repositories,channels}`.
+
+[^7]: Implemented [`file:lib/src/core/models/result.dart`](../../../lib/src/core/models/result.dart) - Freezed sealed class with Result.success and Result.failure variants for explicit error handling.
+
+[^8]: Created [`file:test/core/logger/logger_test.dart`](../../../test/core/logger/logger_test.dart) verifying scoped tagging, all log levels (v/d/i/w/e/wtf), error handling, and file output configuration.
+
+[^9]: Implemented [`file:lib/src/core/logger/logger.dart`](../../../lib/src/core/logger/logger.dart) - Logger service with scoped tagging, console + file output to ~/Library/Logs/goodbar/app.log, and PrettyPrinter formatting.
+
+[^10]: Ran `just gen` which executed build_runner and generated [`file:lib/src/core/models/result.freezed.dart`](../../../lib/src/core/models/result.freezed.dart) with all Freezed union type methods.
