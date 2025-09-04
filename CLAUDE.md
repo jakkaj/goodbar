@@ -17,8 +17,7 @@ When creating Mermaid diagrams in documentation:
 
 **CRITICAL**: Always read these files before working on the codebase:
 
-- `docs/rules/architecture.md` - Core architectural rules and layer separation principles  
-- `docs/rules/rules-idioms.md` - Project patterns, testing strategies, and code quality standards
+- `docs/rules/rules-idioms-architecture.md` - Core architectural rules and layer separation principles, project patterns, testing strategies, and code quality standards
 
 
 ## Project Rules and Workflow
