@@ -1,16 +1,30 @@
-# goodbar
+# Goodbar
 
-A new Flutter project.
+A Windows-style taskbar for macOS with multi-display support.
 
-## Getting Started
+## Prerequisites
 
-This project is a starting point for a Flutter application.
+### Required Tools
+- Flutter SDK (3.x or later)
+- Xcode (for macOS development)
+- Ruby gems:
+  ```bash
+  sudo gem install xcodeproj
+  ```
 
-A few resources to get you started if this is your first Flutter project:
+### Build & Run
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```bash
+# Install dependencies
+just get
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+# Run the app
+just run-macos
+
+# Build for release
+just build-macos
+```
+
+## Development
+
+See `docs/` for architecture and development guidelines.

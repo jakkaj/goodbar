@@ -1,0 +1,309 @@
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:goodbar/src/core/logging/app_logger.dart';
+import 'package:goodbar/src/services/screen/macos_screen_service.dart';
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  
+  group('MacOSScreenService - Real Display Integration', () {
+    late MacOSScreenService service;
+    late AppLogger testLogger;
+    
+    setUp(() {
+      testLogger = AppLogger(appName: 'test');
+      service = MacOSScreenService(logger: testLogger);
+    });
+    
+    tearDown(() {
+      service.dispose();
+    });
+    
+    test('detects all 3 connected displays', () async {
+      /// Purpose: Verify service detects all physical displays
+      /// Quality Contribution: Ensures multi-display support works with real
+      /// hardware, not just mocked data
+      /// Acceptance Criteria: Must detect exactly 3 displays on test machine
+      
+      final result = await service.getDisplays();
+      
+      result.when(
+        success: (displays) {
+          // Test machine has 3 displays connected
+          expect(displays.length, equals(3), 
+            reason: 'Should detect all 3 connected displays');
+          
+          // All displays should have valid IDs
+          final ids = displays.map((d) => d.id).toSet();
+          expect(ids.length, equals(3), 
+            reason: 'Each display should have unique ID');
+          
+          // Log display arrangement for debugging
+          print('\nDetected displays:');
+          for (final display in displays) {
+            print('  ${display.isPrimary ? "[PRIMARY]" : "[SECONDARY]"} '
+                  'ID: ${display.id}, '
+                  'Position: (${display.bounds.x}, ${display.bounds.y}), '
+                  'Size: ${display.bounds.width}x${display.bounds.height}, '
+                  'Scale: ${display.scaleFactor}x');
+          }
+        },
+        failure: (error) => fail('Failed to get displays: $error'),
+      );
+    });
+    
+    test('identifies exactly one primary display', () async {
+      /// Purpose: Verify primary display detection
+      /// Quality Contribution: Ensures taskbar knows which display is primary
+      /// for default positioning
+      /// Acceptance Criteria: Exactly one display must be marked as primary
+      
+      final result = await service.getDisplays();
+      
+      result.when(
+        success: (displays) {
+          final primaryDisplays = displays.where((d) => d.isPrimary).toList();
+          
+          expect(primaryDisplays.length, equals(1), 
+            reason: 'Exactly one display should be primary');
+          
+          final primary = primaryDisplays.first;
+          print('\nPrimary display: ID=${primary.id}, '
+                'Size=${primary.bounds.width}x${primary.bounds.height}');
+        },
+        failure: (error) => fail('Failed to get displays: $error'),
+      );
+    });
+    
+    test('all displays have valid dimensions and scale factors', () async {
+      /// Purpose: Verify display properties are realistic
+      /// Quality Contribution: Catches platform channel parsing errors
+      /// that might return invalid data
+      /// Acceptance Criteria: All displays must have positive dimensions
+      /// and reasonable scale factors
+      
+      final result = await service.getDisplays();
+      
+      result.when(
+        success: (displays) {
+          for (final display in displays) {
+            // Dimensions must be positive
+            expect(display.bounds.width, greaterThan(0),
+              reason: 'Display ${display.id} width must be positive');
+            expect(display.bounds.height, greaterThan(0),
+              reason: 'Display ${display.id} height must be positive');
+            
+            // Scale factor must be reasonable (1.0 to 3.0 for current hardware)
+            expect(display.scaleFactor, greaterThanOrEqualTo(1.0),
+              reason: 'Display ${display.id} scale factor too low');
+            expect(display.scaleFactor, lessThanOrEqualTo(3.0),
+              reason: 'Display ${display.id} scale factor too high');
+            
+            // Work area must be within bounds
+            expect(display.workArea.width, lessThanOrEqualTo(display.bounds.width),
+              reason: 'Work area width cannot exceed bounds');
+            expect(display.workArea.height, lessThanOrEqualTo(display.bounds.height),
+              reason: 'Work area height cannot exceed bounds');
+          }
+        },
+        failure: (error) => fail('Failed to get displays: $error'),
+      );
+    });
+    
+    test('display arrangement has correct coordinate system', () async {
+      /// Purpose: Verify macOS coordinate system conversion
+      /// Quality Contribution: Ensures displays are positioned correctly
+      /// for taskbar placement on each screen
+      /// Acceptance Criteria: Primary at origin, secondaries positioned
+      /// relative to primary
+      
+      final result = await service.getDisplays();
+      
+      result.when(
+        success: (displays) {
+          final primary = displays.firstWhere((d) => d.isPrimary);
+          
+          // Primary display should typically be at origin
+          expect(primary.bounds.x, equals(0),
+            reason: 'Primary display should be at x=0');
+          expect(primary.bounds.y, equals(0),
+            reason: 'Primary display should be at y=0');
+          
+          // Secondary displays should be positioned relative to primary
+          final secondaries = displays.where((d) => !d.isPrimary);
+          for (final display in secondaries) {
+            // At least one coordinate should be non-zero (not overlapping primary)
+            final hasPosition = display.bounds.x != 0 || display.bounds.y != 0 ||
+                               display.bounds.x == primary.bounds.width ||
+                               display.bounds.y == primary.bounds.height;
+            expect(hasPosition, isTrue,
+              reason: 'Secondary display ${display.id} should be positioned relative to primary');
+          }
+        },
+        failure: (error) => fail('Failed to get displays: $error'),
+      );
+    });
+    
+    test('getPrimaryDisplay returns the same as primary in getDisplays', () async {
+      /// Purpose: Verify getPrimaryDisplay consistency
+      /// Quality Contribution: Ensures both methods return consistent data
+      /// Acceptance Criteria: getPrimaryDisplay must match primary from getDisplays
+      
+      final allDisplaysResult = await service.getDisplays();
+      final primaryResult = await service.getPrimaryDisplay();
+      
+      allDisplaysResult.when(
+        success: (displays) {
+          final primaryFromAll = displays.firstWhere((d) => d.isPrimary);
+          
+          primaryResult.when(
+            success: (primaryDirect) {
+              expect(primaryDirect.id, equals(primaryFromAll.id),
+                reason: 'Primary display ID should match');
+              expect(primaryDirect.bounds, equals(primaryFromAll.bounds),
+                reason: 'Primary display bounds should match');
+              expect(primaryDirect.scaleFactor, equals(primaryFromAll.scaleFactor),
+                reason: 'Primary display scale factor should match');
+            },
+            failure: (error) => fail('Failed to get primary display: $error'),
+          );
+        },
+        failure: (error) => fail('Failed to get all displays: $error'),
+      );
+    });
+    
+    test('getDisplay retrieves specific display by ID', () async {
+      /// Purpose: Verify individual display retrieval
+      /// Quality Contribution: Enables targeted queries for specific displays
+      /// Acceptance Criteria: Each display ID from getDisplays must be
+      /// retrievable via getDisplay
+      
+      final allDisplaysResult = await service.getDisplays();
+      
+      await allDisplaysResult.when(
+        success: (displays) async {
+          // Test retrieving each display individually
+          for (final expected in displays) {
+            final result = await service.getDisplay(expected.id);
+            
+            result.when(
+              success: (actual) {
+                expect(actual.id, equals(expected.id),
+                  reason: 'Retrieved display ID should match requested');
+                expect(actual.bounds, equals(expected.bounds),
+                  reason: 'Retrieved display bounds should match');
+                expect(actual.isPrimary, equals(expected.isPrimary),
+                  reason: 'Retrieved display primary status should match');
+              },
+              failure: (error) => fail('Failed to get display ${expected.id}: $error'),
+            );
+          }
+        },
+        failure: (error) => fail('Failed to get all displays: $error'),
+      );
+    });
+    
+    test('getDisplay returns failure for non-existent display ID', () async {
+      /// Purpose: Verify error handling for invalid display IDs
+      /// Quality Contribution: Ensures graceful failure for disconnected displays
+      /// Acceptance Criteria: Non-existent ID must return Result.failure
+      
+      const invalidId = 'display-99999';
+      final result = await service.getDisplay(invalidId);
+      
+      result.when(
+        success: (_) => fail('Should not succeed with invalid display ID'),
+        failure: (error) {
+          expect(error, contains('not found'),
+            reason: 'Error should indicate display not found');
+        },
+      );
+    });
+    
+    test('work area accounts for menu bar and dock', () async {
+      /// Purpose: Verify work area calculations for system UI
+      /// Quality Contribution: Ensures taskbar doesn't overlap with system UI
+      /// Acceptance Criteria: Work area must be smaller than full bounds
+      /// accounting for menu bar and/or dock
+      
+      final result = await service.getDisplays();
+      
+      result.when(
+        success: (displays) {
+          for (final display in displays) {
+            // Menu bar reduces work area from top (primary display)
+            if (display.isPrimary) {
+              expect(display.menuBarHeight, greaterThan(0),
+                reason: 'Primary display should have menu bar space');
+            }
+            
+            // Work area should be smaller than bounds if dock is visible
+            final hasSystemUI = display.workArea.height < display.bounds.height ||
+                               display.workArea.width < display.bounds.width;
+            expect(hasSystemUI, isTrue,
+              reason: 'Display ${display.id} should have reduced work area for system UI');
+            
+            print('Display ${display.id} - MenuBar: ${display.menuBarHeight}px, '
+                  'Dock: ${display.dockHeight}px');
+          }
+        },
+        failure: (error) => fail('Failed to get displays: $error'),
+      );
+    });
+    
+    test('display stream is available for change notifications', () async {
+      /// Purpose: Verify display change stream is functional
+      /// Quality Contribution: Enables reactive UI updates when displays change
+      /// Acceptance Criteria: Stream must be accessible and not throw
+      
+      expect(() => service.displayChanges, returnsNormally);
+      
+      // Set up listener (won't receive events unless displays actually change)
+      final subscription = service.displayChanges.listen(
+        (event) {
+          print('Display change detected: ${event.changeType} - '
+                '${event.displays.length} displays');
+        },
+        onError: (error) {
+          fail('Display change stream error: $error');
+        },
+      );
+      
+      // Give it a moment to ensure no immediate errors
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      await subscription.cancel();
+    });
+    
+    test('service handles rapid successive calls correctly', () async {
+      /// Purpose: Verify service thread safety and performance
+      /// Quality Contribution: Ensures service can handle concurrent requests
+      /// from multiple UI components
+      /// Acceptance Criteria: Parallel calls must all succeed without errors
+      
+      // Make multiple concurrent requests
+      final futures = [
+        service.getDisplays(),
+        service.getPrimaryDisplay(),
+        service.getDisplay('0'), // Assuming display 0 exists
+        service.getDisplays(),
+        service.getPrimaryDisplay(),
+      ];
+      
+      final results = await Future.wait(futures);
+      
+      // All should succeed
+      for (final result in results) {
+        result.when(
+          success: (_) => {}, // Success expected
+          failure: (error) {
+            // getDisplay('0') might fail if ID format is different
+            if (!error.contains('not found')) {
+              fail('Unexpected failure in concurrent calls: $error');
+            }
+          },
+        );
+      }
+    });
+  });
+}

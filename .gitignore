@@ -121,3 +121,19 @@ app.*.symbols
 # Scratch directory - track the directory but not its contents
 scratch/*
 !scratch/.gitkeep
+
+# Build Runner generated files
+*.g.dart
+*.freezed.dart
+*.gr.dart
+*.gen.dart
+
+# Drift (moor) database generated files
+*.drift.dart
+*.moor.dart
+
+# JSON serialization generated files
+*.json.g.dart
+
+# Other common generated artifacts
+*.chopper.dart

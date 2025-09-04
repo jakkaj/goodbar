@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'src/bootstrap/logger_providers.dart';
 import 'src/core/logging/app_logger.dart';
+import 'src/test_display_detection.dart';
 
 void main() {
   // Create root logger with file output (in release mode)
@@ -49,7 +50,7 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const TestDisplayDetection(),
     );
   }
 }
