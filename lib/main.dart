@@ -1,7 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'src/bootstrap/logger_providers.dart';
+import 'src/core/logging/app_logger.dart';
 
 void main() {
-  runApp(const MyApp());
+  // Create root logger with file output (in release mode)
+  final rootLog = AppLogger(appName: 'goodbar', fileName: 'app.log');
+  
+  // Basic error handler using logger
+  FlutterError.onError = (details) {
+    rootLog.e('FlutterError', details.exception, details.stack);
+  };
+  
+  // Wrap app in ProviderScope for dependency injection
+  runApp(
+    ProviderScope(
+      overrides: [
+        loggerRootProvider.overrideWithValue(rootLog),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
