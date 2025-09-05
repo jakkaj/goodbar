@@ -261,41 +261,291 @@ class MyApp extends ConsumerWidget {
 
 ---
 
-## Phase 6: Testing (30 min)
+## Phase 6: Canonical Testing Implementation (2-3 hours)
+
+Based on `docs/rules/flutter-testing-guide.md` and `docs/rules/rules-idioms-architecture.md`, this phase establishes comprehensive testing patterns that serve as both validation and executable documentation.
 
 | Task | File | Status | Notes |
 |------|------|--------|-------|
-| 6.1 Unit test provider | `test/providers/displays_provider_test.dart` | [ ] | Test with FakeScreenService |
-| 6.2 Test DI overrides | - | [ ] | Verify logger injection works |
-| 6.3 Test error handling | - | [ ] | Verify Result -> AsyncError |
+| 6.1 Test helpers | `test/helpers/test_helpers.dart` | [ ] | AsyncValue matchers, display builders, container utilities |
+| 6.2 Mock providers | `test/helpers/mock_providers.dart` | [ ] | Test-specific provider implementations |
+| 6.3 Unit: Provider tests | `test/unit/providers/displays_provider_test.dart` | [ ] | All state transitions, DI, error handling |
+| 6.4 Unit: Model tests | `test/unit/models/display_model_test.dart` | [ ] | Freezed equality, copyWith, JSON |
+| 6.5 Widget tests | `test/widget/displays_screen_test.dart` | [ ] | All AsyncValue states, user interactions |
+| 6.6 Golden tests | `test/widget/displays_screen_golden_test.dart` | [ ] | Visual regression with Alchemist |
+| 6.7 HowTo test | `test/howto/display_detection_workflow_test.dart` | [ ] | Executable documentation of complete workflow |
+| 6.8 Integration test | `integration_test/displays_integration_test.dart` | [ ] | Real macOS platform channels |
 
-### 6.1 Simple Provider Test
+### 6.1 Test Structure
+```
+test/
+  unit/
+    providers/
+      displays_provider_test.dart          # Provider state transitions
+    models/
+      display_model_test.dart              # Freezed model tests
+  widget/
+    displays_screen_test.dart              # UI state handling
+    displays_screen_golden_test.dart       # Visual regression
+  helpers/
+    test_helpers.dart                      # Shared utilities
+    mock_providers.dart                    # Test-specific providers
+  howto/
+    display_detection_workflow_test.dart   # Executable documentation
+integration_test/
+  displays_integration_test.dart           # Real macOS interaction
+```
+
+### 6.2 Key Testing Patterns
+
+#### Quality Documentation Pattern
+Every test must include comprehensive documentation:
 ```dart
-void main() {
-  group('DisplaysProvider - First Riverpod Test', () {
-    test('demonstrates DI with provider overrides', () async {
-      // 1. Create fake service
-      final fakeService = FakeScreenService();
-      fakeService.setDisplays([/* test data */]);
+test('handles platform channel failure gracefully', () async {
+  /// Purpose: Ensure the app doesn't crash when platform communication fails
+  /// 
+  /// Quality Contribution: Maintains app stability even when native layer is unavailable,
+  /// allowing graceful degradation instead of crashes
+  /// 
+  /// Acceptance Criteria: Provider must transition to AsyncError with proper error message,
+  /// UI must show retry option, and recovery must work after failure clears
+```
 
-      // 2. Create container with overrides (DI pattern)
-      final container = ProviderContainer(
-        overrides: [
-          screenServiceProvider.overrideWithValue(fakeService),
-        ],
-      );
+#### Correctness Over Existence Pattern
+Test for specific values and relationships, not just presence:
+```dart
+// ❌ BAD - Only tests existence
+expect(displays.isNotEmpty, isTrue);
 
-      // 3. Read provider and verify
-      await container.pump();
-      final state = container.read(displaysProvider);
+// ✅ GOOD - Tests correctness
+expect(displays.length, 3);
+expect(displays[0].isPrimary, isTrue);
+expect(displays[0].id, '1');
+expect(displays[0].scaleFactor, 2.0);
+expect(displays.where((d) => d.isPrimary).length, 1); // Only one primary
+```
 
-      expect(state.hasValue, isTrue);
-      expect(state.requireValue.length, 1);
+#### Container Lifecycle Pattern
+Proper cleanup prevents memory leaks:
+```dart
+late ProviderContainer container;
 
-      container.dispose();
-    });
-  });
-}
+setUp(() {
+  container = ProviderContainer(overrides: [...]);
+});
+
+tearDown(() {
+  container.dispose();
+});
+
+// OR using addTearDown pattern (preferred)
+test('example', () async {
+  final container = ProviderContainer();
+  addTearDown(container.dispose);
+  // test code...
+});
+```
+
+#### State Transition Tracking Pattern
+Verify complete AsyncValue sequences:
+```dart
+final states = <AsyncValue<List<Display>>>[];
+container.listen(displaysProvider, (prev, next) {
+  states.add(next);
+});
+
+// Trigger state changes
+await container.read(displaysProvider.notifier).refresh();
+
+// Verify complete sequence
+expect(states.map((s) => s.runtimeType), [
+  AsyncLoading<List<Display>>,
+  AsyncData<List<Display>>,
+]);
+```
+
+### 6.3 Test Coverage Requirements
+
+#### Unit Tests (test/unit/)
+- **Provider tests**: 100% of provider methods and state transitions
+  - Initial build (AsyncLoading → AsyncData)
+  - Error scenarios (Result.failure → AsyncError)  
+  - Refresh with state tracking
+  - Disposal with ref.onDispose
+  - Dependent provider chains
+  
+- **Model tests**: All Freezed features
+  - Equality comparisons
+  - copyWith functionality
+  - JSON serialization/deserialization
+  - Custom computed properties
+
+#### Widget Tests (test/widget/)
+- **UI state coverage**: All AsyncValue.when branches
+  - Loading state with CircularProgressIndicator
+  - Error state with retry button
+  - Data state with correct display information
+  - Empty state handling
+  
+- **Interaction tests**: User actions
+  - Refresh button triggers provider.refresh()
+  - Retry button recovers from error
+  - Primary display badge visibility
+
+#### Golden Tests (test/widget/)
+- **Visual scenarios**: All UI states
+  - Loading state appearance
+  - Error state with message
+  - 1, 2, and 3 display configurations
+  - Primary display highlighting
+  - Use Alchemist for CI stability
+
+#### Integration Tests (integration_test/)
+- **Real platform validation**: No mocks
+  - Actual display detection via MethodChannel
+  - Verify 3 connected displays
+  - Performance < 500ms
+  - Correct display properties (bounds, scale, etc.)
+
+#### HowTo Tests (test/howto/)
+- **Executable documentation**: Complete workflows
+  - App startup → display detection
+  - Error → retry → recovery
+  - DI pattern demonstration
+  - Multi-display scenarios
+  - State observation patterns
+
+### 6.4 Test Implementation Examples
+
+#### Provider Test Example
+```dart
+test('build() loads displays with proper state transitions', () async {
+  /// Purpose: Verify initial provider build follows AsyncLoading → AsyncData pattern
+  /// Quality Contribution: Ensures predictable state transitions for UI consumption
+  /// Acceptance Criteria: Must start with AsyncLoading, transition to AsyncData
+  /// with 3 displays, each with valid properties
+  
+  final service = FakeScreenService();
+  final container = ProviderContainer(
+    overrides: [
+      screenServiceProvider.overrideWithValue(service),
+    ],
+  );
+  addTearDown(container.dispose);
+  
+  // Track state transitions
+  final states = <AsyncValue<List<Display>>>[];
+  container.listen(displaysProvider, (_, next) => states.add(next));
+  
+  // Trigger build
+  final future = container.read(displaysProvider.future);
+  
+  // Verify initial loading state
+  expect(states.last, isA<AsyncLoading>());
+  
+  // Wait for resolution
+  final displays = await future;
+  
+  // Verify final state
+  expect(states.last, isA<AsyncData>());
+  expect(displays.length, 3);
+  expect(displays[0].isPrimary, isTrue);
+  expect(displays[0].scaleFactor, 2.0);
+});
+```
+
+#### Widget Test Example
+```dart
+testWidgets('shows error state with functional retry', (tester) async {
+  /// Purpose: Verify error UI provides clear feedback and recovery path
+  /// Quality Contribution: Ensures users can recover from transient failures
+  /// Acceptance Criteria: Error message visible, retry button functional,
+  /// successful recovery after retry
+  
+  final service = FakeScreenService();
+  service.setFailure(PlatformChannelFailure('Connection lost'));
+  
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        screenServiceProvider.overrideWithValue(service),
+      ],
+      child: const MaterialApp(home: DisplaysScreen()),
+    ),
+  );
+  
+  await tester.pumpAndSettle();
+  
+  // Verify error UI
+  expect(find.text('Error loading displays'), findsOneWidget);
+  expect(find.text('Connection lost'), findsOneWidget);
+  expect(find.widgetWithText(ElevatedButton, 'Retry'), findsOneWidget);
+  
+  // Clear failure for retry
+  service.clearFailure();
+  
+  // Tap retry
+  await tester.tap(find.text('Retry'));
+  await tester.pump(); // Start loading
+  expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  
+  await tester.pumpAndSettle(); // Complete loading
+  
+  // Verify recovery
+  expect(find.text('Display 1'), findsOneWidget);
+  expect(find.text('Error loading displays'), findsNothing);
+});
+```
+
+#### HowTo Test Example
+```dart
+test('complete workflow demonstrates DI and state management', () async {
+  /// Compelling Use Case: Developer needs to understand how Riverpod DI works
+  /// with AsyncValue state management in a real scenario
+  /// 
+  /// This test demonstrates:
+  /// 1. Provider override patterns for testing
+  /// 2. AsyncValue state transitions
+  /// 3. Error handling and recovery
+  /// 4. Multiple display detection
+  
+  // Setup: Configure test container with fake service
+  final service = FakeScreenService();
+  final container = ProviderContainer(
+    overrides: [
+      screenServiceProvider.overrideWithValue(service),
+    ],
+  );
+  addTearDown(container.dispose);
+  
+  // Track all state transitions
+  final states = <AsyncValue<List<Display>>>[];
+  container.listen(displaysProvider, (_, next) => states.add(next));
+  
+  // Step 1: Initial load
+  await container.read(displaysProvider.future);
+  expect(states, [
+    isA<AsyncLoading>(),
+    isA<AsyncData>().having((s) => s.value.length, 'display count', 3),
+  ]);
+  
+  // Step 2: Simulate error
+  service.setFailure(PlatformChannelFailure('Network error'));
+  await container.read(displaysProvider.notifier).refresh();
+  
+  expect(states.last, isA<AsyncError>()
+    .having((s) => s.error.toString(), 'error', contains('Network error')));
+  
+  // Step 3: Recovery
+  service.clearFailure();
+  await container.read(displaysProvider.notifier).refresh();
+  
+  expect(states.last, isA<AsyncData>()
+    .having((s) => s.value.length, 'display count', 3));
+  
+  // Verify complete workflow understanding
+  expect(states.length, 5, reason: 'Should have 5 state transitions');
+});
 ```
 
 ---

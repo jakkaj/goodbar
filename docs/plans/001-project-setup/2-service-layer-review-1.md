@@ -1,4 +1,4 @@
-# Service Layer Review 1 — Findings and Action Plan
+# Service Layer Review 1 — Findings and Action Plan (Updated)
 
 This document summarizes the current implementation against our service-layer plan and rules, outlines concrete issues, and provides an actionable, testable fix plan we can execute step-by-step.
 
@@ -7,35 +7,33 @@ Scope covers: logging wrapper and DI, service providers, display service/pods, m
 ## Summary of Findings
 
 1) Logger wrapper (AppLogger)
-- Surface API uses positional error/stack parameters while `package:logger` (2.6.x) exposes named args. This creates an inconsistent API for consumers and complicates propagation of error and stack traces through DI.
-- Tagging uses `PrefixPrinter` with only `debug:` prefix, so only `debug` messages receive the tag. Info/warn/error/fatal lines are missing the tag consistently.
-- Release-only file logging is present, but there is no rotation/retention strategy. Printing `time:` manually is redundant when printers already include timestamps.
+- Tagging: `tag()` uses `PrefixPrinter` with only the `debug:` prefix, so only `debug` lines are tagged; `info/warn/error/fatal` lack the `[$tag]` prefix. Needs a printer that tags all levels [^1].
+- API shape: Methods currently accept positional `(message, [error, stack])` and forward as named to `package:logger`. This is acceptable; alignment to named args on our surface API is optional. Keep as-is unless we see confusion in call sites [^1].
+- File logging: Release-only file output is present; rotation/retention not implemented. Optional enhancement.
 
-2) DI wiring for services
-- `screenServiceProvider` and other service providers are missing. UI demo constructs `MacOSScreenService` directly, bypassing provider-based DI and making overrides in tests harder.
+2) DI wiring for services — Implemented
+- `screenServiceProvider` exists and injects a tagged logger; fakes can override in tests [^2].
 
-3) Pods usage
-- There is no `displaysPod`. The demo widget reads from the service directly rather than from a pod, breaking the intended flow: UI → Pods → Services → Platform.
+3) Pods usage — Implemented
+- `displaysProvider` exists as an `AsyncNotifier` (good choice for manual refresh) and uses the `ScreenService` contract. UI (`DisplaysScreen`) consumes the provider, not the service directly [^3].
 
-4) Contract drift vs docs
-- `Display` model currently uses custom `Rectangle`/`Point` types and a `String` id. Our service-layer doc recommends a small, portable DTO and suggests either `Rect` (with a JSON converter) or a minimal geometry type; also, `id` as `int` maps better to `CGDirectDisplayID` on macOS. A `name` field is also expected for display labeling.
+4) Contract alignment vs docs
+- `Display` model uses `Rectangle/Point` (Freezed) and `id: String`. This is fine and portable; the docs’ `Rect`/`int id` suggestion can be adapted. Consider adding `name` later if the platform can provide it [^4][^5].
 
-5) macOS coordinate conversion
-- The Swift bridge converts Y using only the primary display’s height, which yields wrong coordinates for stacked/negative layouts. It should compute the virtual desktop union (minX, maxY) across all screens and convert using that baseline for both `frame` and `visibleFrame`.
+5) macOS coordinate conversion — Needs fix
+- Swift converts Y using the primary display height, which is incorrect for non-trivial layouts. Should compute the virtual desktop union and convert using `virtualMaxY` for both `frame` and `visibleFrame` [^6][^7].
 
-6) Repo/docs drift and small inconsistencies
-- README says `just run-macos` but `justfile` provides `run`. Either rename/add alias or update docs.
-- Folder layout differs slightly from rules; this is acceptable if we standardize and document it.
+6) Repo/docs drift
+- README says `just run-macos` but `justfile` provides `run`. Add an alias or update README [^8].
 
 ## Recommended Approach (High-Level)
 
-- Logger: make `AppLogger` a thin façade over `Logger` with named parameters, consistent tagging via a small `TaggedPrinter`, and release-only file output (optional rotation using `AdvancedFileOutput`). Keep the providers as-is for DI and update tests to assert tag presence and level behavior.
-- DI: add `screenServiceProvider` in a new `bootstrap/service_providers.dart`, inject the tagged logger from `loggerProvider('ScreenService')` and return `MacOSScreenService` on macOS (fake elsewhere or by override in tests).
-- Pods: add a `displaysPod` `FutureProvider<List<Display>>` that logs, calls the service, maps `Result.success` to data and throws `StateError` for failures.
-- Models: choose Option A (recommended): switch to `Rect` with a `JsonConverter`, use `int id`, add `name`, `uuid?`, `scale`, `frame`, `visibleFrame`. If we prefer minimal churn, keep `Rectangle` but add `name` and migrate `id` → `int`.
-- Swift: fix coordinate conversion to use virtual union (minX, maxY) and return the enriched fields.
-- UI demo: refactor to consume `displaysPod` rather than constructing services directly.
-- Docs/tooling: align README and `justfile` commands; note log file location.
+- Logger: keep current API; fix tagging to apply to all levels (replace `PrefixPrinter` usage with a simple all-level prefixing printer). Optional: add rotation later. Update/extend tests to assert tag presence across levels.
+- DI: keep `screenServiceProvider` and continue overriding with `FakeScreenService` in tests.
+- Pods: keep `AsyncNotifier`-based `displaysProvider` for refresh capability; add provider tests that exercise success/failure paths via overrides.
+- Models: keep `Rectangle` (portable), keep `id: String` (future-proofs UUIDs); consider adding optional `name` later if feasible on macOS.
+- Swift: fix coordinate conversion using virtual desktop union and, if available, enrich payload with `uuid`/`name`.
+- Docs/tooling: align README and `justfile` commands; document log file location.
 
 ## Detailed Action Plan (Tasks & Success Criteria)
 
@@ -43,94 +41,63 @@ Scope covers: logging wrapper and DI, service providers, display service/pods, m
 
 | # | Status | Task | Success Criteria | Notes |
 |---|--------|------|------------------|-------|
-| A.1 | [ ] | Align `AppLogger` API to named args | `AppLogger.d/i/w/e/f/wtf` accept named `{error, stackTrace, time}` and forward to `Logger` without compile errors | Update surface API to match `logger` 2.6.x [^f1] |
-| A.2 | [ ] | Correct tagging for all levels | All levels include `[$tag]` prefix (verified by captured output test) | Replace partial `PrefixPrinter` usage with a `TaggedPrinter` wrapper [^f1] |
-| A.3 | [ ] | Release-only file logging with rotation | In debug/tests only console; in release/macOS, writes under `~/Library/Logs/goodbar/` with rotation; add a basic retention config | Use `AdvancedFileOutput` (optional but recommended) [^f1] |
-| A.4 | [ ] | Logger tests | Tests assert: tagged prefix present; `f()` logs; named args pass through; no exceptions thrown | Use a memory/capturing output to assert content [^t1] |
+| A.1 | [ ] | Tagging applies to all levels | All levels include `[$tag]` prefix (verified by captured output test) | Replace current `PrefixPrinter(debug: ...)` with an all-level prefixing printer [^1] |
+| A.2 | [ ] | Keep current API shape | Keep `(message, [error, stack])`; ensure forwarding to `Logger` named args stays correct | No call-site churn; verify with tests [^1] |
+| A.3 | [ ] | Logger tests | Assert tag prefix across levels; `f()` works; error/stack captured; no throws | Use a capturing output in tests [^1] |
+| A.4 | [ ] | Optional: file rotation | Add retention/rotation in release; document log path in README | Nice-to-have; non-blocking |
 
 ### Phase B — Service providers (DI) & tests
 
 | # | Status | Task | Success Criteria | Notes |
 |---|--------|------|------------------|-------|
-| B.1 | [ ] | Add `screenServiceProvider` | `Provider<ScreenService>` returns `MacOSScreenService` on macOS and is override-friendly for tests | New file with logger injection via `loggerProvider('ScreenService')` [^f2] |
-| B.2 | [ ] | Provider tests | Override `screenServiceProvider` with fake; verify tagged logger injection pattern via `loggerRootProvider` override | See example in service-layer doc [^t2] |
+| B.1 | [x] | `screenServiceProvider` implemented | Provider returns `MacOSScreenService` and supports overrides in tests | Implemented in providers; injects tagged logger [^2] |
+| B.2 | [ ] | Provider tests | Override `screenServiceProvider` with fake; verify override and tagging flow via `loggerRootProvider` | Based on current provider wiring [^2] |
 
-### Phase C — Displays pod & UI integration
-
-| # | Status | Task | Success Criteria | Notes |
-|---|--------|------|------------------|-------|
-| C.1 | [ ] | Add `displaysPod` | `FutureProvider<List<Display>>` maps `Result.success` to data and throws `StateError` on failure; logs appropriately | Matches pattern in `docs/rules/service-layer.md` [^f3] |
-| C.2 | [ ] | Pod tests | With fake service override, verify 1/2/3+ displays; verify failure converts to `AsyncError` | Use `ProviderContainer` and overrides [^t3] |
-| C.3 | [ ] | Demo widget uses pod | Replace direct service construction with `ConsumerWidget` reading `displaysPod` | Remove tight coupling in `test_display_detection.dart` [^f4] |
-
-### Phase D — Model alignment (Option A recommended)
+### Phase C — Pods & UI integration
 
 | # | Status | Task | Success Criteria | Notes |
 |---|--------|------|------------------|-------|
-| D.1 | [ ] | Add `RectConverter` | `Rect` (frame/visibleFrame) serializes/deserializes; tests round-trip | New converter in geometry file [^f5] |
-| D.2 | [ ] | Update `Display` model | Fields: `int id`, `String? uuid`, `String name`, `bool isPrimary`, `double scale`, `Rect frame`, `Rect visibleFrame`; tests updated | Freezed + JSON; run codegen [^f6] |
-| D.3 | [ ] | Update fakes/services | Fake and macOS impl map new fields; tests pass | Minimal surface change in fake; mapper updates in macOS impl [^f7] |
+| C.1 | [x] | Displays provider implemented | `displaysProvider` as `AsyncNotifier` returns `List<Display>` and handles failures | Refresh supported via notifier API [^3] |
+| C.2 | [x] | UI consumes provider | Demo screen uses `ref.watch(displaysProvider)`; no direct service calls | AsyncValue states handled in UI [^3] |
+| C.3 | [ ] | Provider tests | Override with `FakeScreenService`; test success (3 displays), failure, and `refresh()` | No mocks; provider overrides only |
 
-### Phase E — macOS coordinate conversion and payload
-
-| # | Status | Task | Success Criteria | Notes |
-|---|--------|------|------------------|-------|
-| E.1 | [ ] | Fix Y conversion using virtual union | For stacked/negative layouts, converted frames are correct; manual verification across arrangements | Compute `minX` and `maxY` over all screens; convert `frame` and `visibleFrame` [^f8] |
-| E.2 | [ ] | Enrich payload | Include `id` (Int), `uuid?`, `name`, `scale`, `frame`, `visibleFrame` | Map `NSScreenNumber`, `CGDisplayCreateUUIDFromDisplayID`, `localizedName`, `backingScaleFactor` [^f8] |
-| E.3 | [ ] | Dart mapper | `MacOSScreenService` maps new payload to `Display` correctly; tests updated | Error handling remains explicit with `Result` [^f7] |
-
-### Phase F — Docs & tooling
+### Phase D — Models & contract alignment
 
 | # | Status | Task | Success Criteria | Notes |
 |---|--------|------|------------------|-------|
-| F.1 | [ ] | README command fix | `just run` matches README or alias `run-macos` exists | Update either README or `justfile` [^f9] |
-| F.2 | [ ] | Document small structure choice | Decide to keep current services folder vs. align to docs; document the decision | Minor doc note under rules or plan [^f10] |
+| D.1 | [ ] | Confirm `id` semantics | Keep `String` id for future UUIDs; document mapping from native display ID | Avoid churn; ensure tests reflect this [^4] |
+| D.2 | [ ] | Optional `name` field | Add `name` when obtainable from macOS; otherwise derive `"Display <id>"` | Requires Swift changes [^6][^7] |
+| D.3 | [ ] | Tests for model shape | JSON round-trip, computed fields (menuBarHeight/dockHeight), equality | Extend existing tests as needed [^4][^5] |
 
-## Risks, Pitfalls, Mitigations
+### Phase E — macOS coordinate conversion
 
-- Logger API drift: If `logger` version changes, re-check method signatures for `f()`/named args. Keep a small shim to call `wtf()` if `f()` is unavailable.
-- Tagging consistency: Ensure prefix applies to all levels (custom `TaggedPrinter`), not just debug.
-- Coordinate correctness: Never base Y on the primary height; always compute union (minX, maxY). Validate with a stacked monitor layout.
-- Model churn: If migrating to `Rect`, update all tests and mappers in one PR to avoid inconsistent state. If churn is too high right now, adopt the “keep `Rectangle`” fallback but still fix ID type and add `name`.
-- Tests on CI: Keep native/hardware-dependent tests skipped or gated by env vars; rely on fakes + provider overrides for the bulk.
+| # | Status | Task | Success Criteria | Notes |
+|---|--------|------|------------------|-------|
+| E.1 | [ ] | Compute virtual desktop union | Use union(minX, maxY) across all screens; convert y with `virtualMaxY - (y + height)` | Apply to both `frame` and `visibleFrame` [^6][^7] |
+| E.2 | [ ] | Return enriched fields | Include `uuid` if available; optionally `name` | Keep id as stringified display number for now [^7] |
+| E.3 | [ ] | Tests/validation | Manual validation on multi-display layouts (stacked, negative coordinates) | Verify menu bar/dock heights mapped correctly |
 
-## Open Decisions (confirm before implementation)
+### Phase F — Docs/tooling alignment
 
-- Display model direction: adopt `Rect` + converter (recommended) vs. keep `Rectangle` for now and add `name`/`int id`.
-- Enable log rotation now (`AdvancedFileOutput`) vs. keep simple file output and revisit later.
-- Folder layout: retain current `lib/src/services/screen/*` organization or align strictly to `core/services` + `core/services_impl` as per docs.
+| # | Status | Task | Success Criteria | Notes |
+|---|--------|------|------------------|-------|
+| F.1 | [ ] | Align README and `justfile` | Add `run-macos` alias or update README to `just run`; document log path | Developer experience consistency [^8] |
 
-## References (internal)
+---
 
-- Rules & architecture: `docs/rules/rules-idioms-architecture.md`
-- Service-layer spec: `docs/rules/service-layer.md`
-- Existing plan: `docs/plans/001-project-setup/2-service-layer.md`
+[^1]: Review and adjust tagging in [`method:lib/src/core/logging/app_logger.dart:AppLogger.tag`](../../../lib/src/core/logging/app_logger.dart) and verify all shorthands (`d/i/w/e/f`) forward error/stack correctly.
 
-## Footnotes (targets to modify)
+[^2]: `screenServiceProvider` implemented in [`file:lib/src/providers/services.dart`](../../../lib/src/providers/services.dart) and consumes [`provider:lib/src/bootstrap/logger_providers.dart:loggerProvider`](../../../lib/src/bootstrap/logger_providers.dart).
 
-[^f1]: Update [`file:lib/src/core/logging/app_logger.dart`](../../../lib/src/core/logging/app_logger.dart) — named parameter surface API, `TaggedPrinter` usage for tags, release-only file output (optional rotation).
+[^3]: Displays provider and UI in [`file:lib/src/providers/displays_provider.dart`](../../../lib/src/providers/displays_provider.dart) and [`file:lib/src/widgets/displays_screen.dart`](../../../lib/src/widgets/displays_screen.dart).
 
-[^t1]: Logger tests in [`file:test/core/logging/app_logger_test.dart`](../../../test/core/logging/app_logger_test.dart) — capture output and assert tag prefix and `f()` logging paths.
+[^4]: Display model lives in [`file:lib/src/core/models/display.dart`](../../../lib/src/core/models/display.dart) with `id: String`, `bounds/workArea: Rectangle`, and computed properties.
 
-[^f2]: Add service provider in [`file:lib/src/bootstrap/service_providers.dart`](../../../lib/src/bootstrap/service_providers.dart) — inject `loggerProvider('ScreenService')`, return `MacOSScreenService` on macOS, override-friendly.
+[^5]: Geometry types are defined in [`file:lib/src/core/models/geometry.dart`](../../../lib/src/core/models/geometry.dart) (`Point`, `Rectangle`).
 
-[^t2]: Provider tests in [`file:test/bootstrap/logger_providers_test.dart`](../../../test/bootstrap/logger_providers_test.dart) and new service provider tests under `test/bootstrap/`.
+[^6]: Dart side mapping/parsing occurs in [`file:lib/src/services/screen/macos_screen_service.dart`](../../../lib/src/services/screen/macos_screen_service.dart).
 
-[^f3]: Add displays pod in [`file:lib/src/features/displays/pods/displays_pod.dart`](../../../lib/src/features/displays/pods/displays_pod.dart) — logs, maps `Result`, throws `StateError` on failure.
+[^7]: Platform implementation in [`method:macos/Runner/ScreenService.swift:displayToDictionary`](../../../macos/Runner/ScreenService.swift) currently uses primary height for Y conversion; update to virtual union and consider adding `uuid`/`name`.
 
-[^t3]: Pod tests in a new file, e.g., [`file:test/features/displays/displays_pod_test.dart`](../../../test/features/displays/displays_pod_test.dart) — provider overrides with fake service.
-
-[^f4]: Refactor demo to consume pod in [`file:lib/src/test_display_detection.dart`](../../../lib/src/test_display_detection.dart) — convert to `ConsumerWidget`/`WidgetRef`.
-
-[^f5]: Add `RectConverter` in [`file:lib/src/core/models/geometry.dart`](../../../lib/src/core/models/geometry.dart) or a dedicated converter file — tests should round-trip.
-
-[^f6]: Update `Display` model in [`file:lib/src/core/models/display.dart`](../../../lib/src/core/models/display.dart) — `int id`, `String? uuid`, `String name`, `double scale`, `Rect frame`, `Rect visibleFrame`.
-
-[^f7]: Update macOS service mapper in [`file:lib/src/services/screen/macos_screen_service.dart`](../../../lib/src/services/screen/macos_screen_service.dart) and fake in [`file:lib/src/services/screen/fake_screen_service.dart`](../../../lib/src/services/screen/fake_screen_service.dart).
-
-[^f8]: Fix coordinate conversion and enrich payload in [`file:macos/Runner/ScreenService.swift`](../../../macos/Runner/ScreenService.swift) — compute `minX` and `maxY`, convert both `frame` and `visibleFrame`, include `uuid` and `name`.
-
-[^f9]: Align commands in [`file:README.md`](../../../README.md) and/or [`file:justfile`](../../../justfile) — ensure `just run` and/or `run-macos` alias.
-
-[^f10]: Document folder layout decision in rules or a short note within this plan; align future changes accordingly.
+[^8]: Align commands in [`file:README.md`](../../../README.md) and [`file:justfile`](../../../justfile) — ensure `just run` and/or `run-macos` alias exists and README matches.
 
