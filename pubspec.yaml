@@ -34,11 +34,14 @@ dependencies:
   # State management
   riverpod: ^2.5.1
   flutter_riverpod: ^2.5.1
-  riverpod_annotation: ^2.3.4
+  riverpod_annotation: ^2.3.5
   
   # Data models
-  freezed_annotation: ^2.4.4
+  freezed_annotation: ^3.0.0
   json_annotation: ^4.9.0
+  
+  # Result type for functional error handling
+  result_dart: ^1.1.1
   
   # Logging
   logger: ^2.0.2
@@ -54,15 +57,21 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  # Code generation
-  build_runner: ^2.4.11
-  riverpod_generator: ^2.4.0
-  freezed: ^2.5.7
-  json_serializable: ^6.8.0
+  # Build system
+  build_runner: ^2.4.13
+  
+  # Generators - from working anx-reader app
+  riverpod_generator: ^2.4.3
+  riverpod_lint: ^2.3.13
+  custom_lint: ^0.7.5
+  freezed: ^3.0.2
+  json_serializable: ^6.9.0
   
   # Testing
   mocktail: ^1.0.3
   golden_toolkit: ^0.15.0
+  integration_test:
+    sdk: flutter
   
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -70,6 +79,8 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+
+# No overrides needed with this combination
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

@@ -16,6 +16,10 @@ gen:
   dart run build_runner build --delete-conflicting-outputs
 
 # Run build_runner in watch mode
+gen-watch-mode:
+  dart run build_runner watch --delete-conflicting-outputs
+
+# Alias for watch mode
 gen-watch:
   dart run build_runner watch --delete-conflicting-outputs
 

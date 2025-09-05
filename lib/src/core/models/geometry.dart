@@ -4,7 +4,7 @@ part 'geometry.freezed.dart';
 part 'geometry.g.dart';
 
 @freezed
-class Point with _$Point {
+sealed class Point with _$Point {
   const factory Point({
     required double x,
     required double y,
@@ -14,7 +14,7 @@ class Point with _$Point {
 }
 
 @freezed
-class Rectangle with _$Rectangle {
+sealed class Rectangle with _$Rectangle {
   const Rectangle._();
   
   const factory Rectangle({

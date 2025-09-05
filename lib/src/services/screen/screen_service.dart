@@ -1,32 +1,33 @@
 import 'package:goodbar/src/core/models/display.dart';
-import 'package:goodbar/src/core/models/result.dart';
+import 'package:goodbar/src/core/failures/screen_failures.dart';
+import 'package:result_dart/result_dart.dart';
 
 /// Service interface for accessing display/screen information.
 /// 
 /// This provides platform-agnostic access to display configuration,
 /// enabling the UI layer to query and react to multi-display setups
 /// without knowing about platform-specific implementation details.
-abstract class ScreenService {
+abstract interface class ScreenService {
   /// Gets all currently connected displays.
   /// 
   /// Returns a Result containing either:
   /// - Success: List of all connected displays with their properties
-  /// - Failure: Error message if display information cannot be retrieved
-  Future<Result<List<Display>, String>> getDisplays();
+  /// - Failure: ScreenFailure if display information cannot be retrieved
+  Future<Result<List<Display>, ScreenFailure>> getDisplays();
   
   /// Gets a specific display by its ID.
   /// 
   /// Returns a Result containing either:
   /// - Success: The requested display if found
-  /// - Failure: Error message if display not found or cannot be retrieved
-  Future<Result<Display, String>> getDisplay(String displayId);
+  /// - Failure: ScreenFailure if display not found or cannot be retrieved
+  Future<Result<Display, ScreenFailure>> getDisplay(String displayId);
   
   /// Gets the primary display.
   /// 
   /// Returns a Result containing either:
   /// - Success: The primary display
-  /// - Failure: Error message if no primary display found
-  Future<Result<Display, String>> getPrimaryDisplay();
+  /// - Failure: ScreenFailure if no primary display found
+  Future<Result<Display, ScreenFailure>> getPrimaryDisplay();
   
   /// Stream of display configuration changes.
   /// 

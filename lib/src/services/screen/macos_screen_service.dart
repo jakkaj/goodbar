@@ -3,8 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:goodbar/src/core/logging/app_logger.dart';
 import 'package:goodbar/src/core/models/display.dart';
 import 'package:goodbar/src/core/models/geometry.dart';
-import 'package:goodbar/src/core/models/result.dart';
+import 'package:goodbar/src/core/failures/screen_failures.dart';
 import 'package:goodbar/src/services/screen/screen_service.dart';
+import 'package:result_dart/result_dart.dart';
 
 /// macOS implementation of ScreenService using MethodChannel.
 /// 
@@ -39,27 +40,27 @@ class MacOSScreenService implements ScreenService {
   }
   
   @override
-  Future<Result<List<Display>, String>> getDisplays() async {
+  Future<Result<List<Display>, ScreenFailure>> getDisplays() async {
     try {
       final result = await _channel.invokeMethod<List<dynamic>>('getDisplays');
       if (result == null) {
-        return const Result.failure('No display data returned from platform');
+        return Failure(PlatformChannelFailure('No display data returned from platform'));
       }
       
       final displays = result.map((data) => _parseDisplay(data as Map<dynamic, dynamic>)).toList();
       _logger.d('Retrieved ${displays.length} displays');
-      return Result.success(displays);
-    } on PlatformException catch (e) {
-      _logger.e('Failed to get displays', e);
-      return Result.failure(e.message ?? 'Platform error getting displays');
-    } catch (e) {
-      _logger.e('Unexpected error getting displays', e);
-      return Result.failure('Unexpected error: $e');
+      return Success(displays);
+    } on PlatformException catch (e, st) {
+      _logger.e('Failed to get displays', e, st);
+      return Failure(PlatformChannelFailure(e.message ?? 'Platform error getting displays', cause: e, stackTrace: st));
+    } catch (e, st) {
+      _logger.e('Unexpected error getting displays', e, st);
+      return Failure(UnknownScreenFailure('Unexpected error: $e', cause: e, stackTrace: st));
     }
   }
   
   @override
-  Future<Result<Display, String>> getDisplay(String displayId) async {
+  Future<Result<Display, ScreenFailure>> getDisplay(String displayId) async {
     try {
       final result = await _channel.invokeMethod<Map<dynamic, dynamic>>(
         'getDisplay',
@@ -67,38 +68,38 @@ class MacOSScreenService implements ScreenService {
       );
       
       if (result == null) {
-        return Result.failure('Display $displayId not found');
+        return Failure(DisplayNotFoundFailure(displayId));
       }
       
       final display = _parseDisplay(result);
       _logger.d('Retrieved display $displayId');
-      return Result.success(display);
-    } on PlatformException catch (e) {
-      _logger.e('Failed to get display $displayId', e);
-      return Result.failure(e.message ?? 'Platform error getting display');
-    } catch (e) {
-      _logger.e('Unexpected error getting display $displayId', e);
-      return Result.failure('Unexpected error: $e');
+      return Success(display);
+    } on PlatformException catch (e, st) {
+      _logger.e('Failed to get display $displayId', e, st);
+      return Failure(PlatformChannelFailure(e.message ?? 'Platform error getting display', cause: e, stackTrace: st));
+    } catch (e, st) {
+      _logger.e('Unexpected error getting display $displayId', e, st);
+      return Failure(UnknownScreenFailure('Unexpected error: $e', cause: e, stackTrace: st));
     }
   }
   
   @override
-  Future<Result<Display, String>> getPrimaryDisplay() async {
+  Future<Result<Display, ScreenFailure>> getPrimaryDisplay() async {
     try {
       final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('getPrimaryDisplay');
       if (result == null) {
-        return const Result.failure('No primary display found');
+        return Failure(PlatformChannelFailure('No primary display found'));
       }
       
       final display = _parseDisplay(result);
       _logger.d('Retrieved primary display ${display.id}');
-      return Result.success(display);
-    } on PlatformException catch (e) {
-      _logger.e('Failed to get primary display', e);
-      return Result.failure(e.message ?? 'Platform error getting primary display');
-    } catch (e) {
-      _logger.e('Unexpected error getting primary display', e);
-      return Result.failure('Unexpected error: $e');
+      return Success(display);
+    } on PlatformException catch (e, st) {
+      _logger.e('Failed to get primary display', e, st);
+      return Failure(PlatformChannelFailure(e.message ?? 'Platform error getting primary display', cause: e, stackTrace: st));
+    } catch (e, st) {
+      _logger.e('Unexpected error getting primary display', e, st);
+      return Failure(UnknownScreenFailure('Unexpected error: $e', cause: e, stackTrace: st));
     }
   }
   

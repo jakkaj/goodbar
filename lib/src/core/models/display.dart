@@ -5,7 +5,7 @@ part 'display.freezed.dart';
 part 'display.g.dart';
 
 @freezed
-class Display with _$Display {
+sealed class Display with _$Display {
   const Display._();
   
   const factory Display({
@@ -30,7 +30,7 @@ class Display with _$Display {
 }
 
 @freezed
-class DisplayChangeEvent with _$DisplayChangeEvent {
+sealed class DisplayChangeEvent with _$DisplayChangeEvent {
   const factory DisplayChangeEvent({
     required List<Display> displays,
     required String changeType,

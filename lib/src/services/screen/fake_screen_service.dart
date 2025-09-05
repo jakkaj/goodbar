@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'package:goodbar/src/core/models/display.dart';
 import 'package:goodbar/src/core/models/geometry.dart';
-import 'package:goodbar/src/core/models/result.dart';
+import 'package:goodbar/src/core/failures/screen_failures.dart';
 import 'package:goodbar/src/services/screen/screen_service.dart';
+import 'package:result_dart/result_dart.dart';
 
 /// Fake implementation of ScreenService for testing.
 /// 
@@ -10,6 +11,7 @@ import 'package:goodbar/src/services/screen/screen_service.dart';
 /// and widget tests without requiring platform channel access.
 class FakeScreenService implements ScreenService {
   List<Display> _displays;
+  ScreenFailure? _failure;
   final _displayChangeController = StreamController<DisplayChangeEvent>.broadcast();
   
   /// Creates a fake screen service with the given displays.
@@ -79,38 +81,70 @@ class FakeScreenService implements ScreenService {
     ));
   }
   
+  /// Sets a failure to be returned by subsequent operations.
+  void setFailure(ScreenFailure failure) {
+    _failure = failure;
+  }
+  
+  /// Clears any set failure.
+  void clearFailure() {
+    _failure = null;
+  }
+  
+  /// Emits a display change event without changing displays.
+  void emitDisplayChange(List<Display> displays) {
+    _displays = displays;
+    _displayChangeController.add(DisplayChangeEvent(
+      displays: displays,
+      changeType: 'changed',
+      timestamp: DateTime.now(),
+    ));
+  }
+  
   @override
-  Future<Result<List<Display>, String>> getDisplays() async {
+  Future<Result<List<Display>, ScreenFailure>> getDisplays() async {
     // Simulate async operation
     await Future.delayed(const Duration(milliseconds: 10));
     
-    if (_displays.isEmpty) {
-      return const Result.failure('No displays available');
+    if (_failure != null) {
+      return Failure(_failure!);
     }
-    return Result.success(List.unmodifiable(_displays));
+    
+    if (_displays.isEmpty) {
+      return Failure(PlatformChannelFailure('No displays available'));
+    }
+    return Success(List.unmodifiable(_displays));
   }
   
   @override
-  Future<Result<Display, String>> getDisplay(String displayId) async {
+  Future<Result<Display, ScreenFailure>> getDisplay(String displayId) async {
     await Future.delayed(const Duration(milliseconds: 10));
+    
+    if (_failure != null) {
+      return Failure(_failure!);
+    }
     
     try {
       final display = _displays.firstWhere((d) => d.id == displayId);
-      return Result.success(display);
+      return Success(display);
     } catch (_) {
-      return Result.failure('Display $displayId not found');
+      return Failure(DisplayNotFoundFailure(displayId));
     }
   }
   
   @override
-  Future<Result<Display, String>> getPrimaryDisplay() async {
+  Future<Result<Display, ScreenFailure>> getPrimaryDisplay() async {
     await Future.delayed(const Duration(milliseconds: 10));
+    
+    if (_failure != null) {
+      return Failure(_failure!);
+    }
     
     try {
       final primary = _displays.firstWhere((d) => d.isPrimary);
-      return Result.success(primary);
+      return Success(primary);
     } catch (_) {
-      return const Result.failure('No primary display found');
+      return Failure(PlatformChannelFailure('No primary display found'));
     }
   }
   
