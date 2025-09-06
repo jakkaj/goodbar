@@ -314,53 +314,67 @@ Establish clear separation between generic test utilities and feature-specific (
 | 6b.5 Update imports in tests | `test/**/*` | [x] | All tests updated to use new import paths, old helpers removed [^6b5] |
 | 6b.6 Update testing guide | `docs/rules/flutter-testing-guide.md` | [x] | Added section 7.4.1 documenting test organization best practices [^6b6] |
 
-### 6b.1 Target Layout
+### 6b.1 Achieved Structure
 
 ```
 test/
-  support/                        # Generic, cross-feature utilities
-    matchers.dart                 # isLoading/isData/isError*, generic
-    pump.dart                     # pump, pumpUntil, helpers
-    riverpod_overrides.dart       # tiny helpers for overrides (optional)
+  support/                              # Generic, cross-feature utilities
+    async_value_matchers.dart          # isLoading/isData/isError matchers
+    pump_utilities.dart                 # pumpWithDelay, pumpUntil, pumpMicrotask
+    container_helpers.dart              # Container extensions, TestContainer.create()
+    README.md                           # Documentation with usage examples
 
   features/
     displays/
-      support/                    # Domain-specific helpers (scoped)
-        fixtures.dart             # DisplayBuilders, TestScenarios, assertions
-        overrides.dart            # MockProviders, MockContainers, transitions
-        fakes/
-          fake_screen_service.dart (optional move)
+      support/                          # Display-specific helpers (scoped)
+        fixtures.dart                   # DisplayBuilders (macBookPro16, external4K, etc.)
+        scenarios.dart                  # TestScenarios (laptopOnly, developerSetup, etc.)
+        mocks.dart                      # MockProviders, MockContainers, purpose-built notifiers
+        assertions.dart                 # DisplayAssertions for validation
+        failures.dart                   # TestFailures factory methods
+        transitions.dart                # StateTransitions for simulating changes
+        README.md                       # Documentation with common patterns
 
-  unit/|widget/|goldens/|howto/   # Existing tests continue to live here or
-                                  # may be migrated to features/*/ if preferred
+  providers/                            # Provider unit tests
+  widgets/                              # Widget tests  
+  services/                             # Service tests
+  howto/                                # Executable documentation
 ```
 
-### 6b.2 Success Criteria
+### 6b.2 Key Achievements
 
-- All tests pass after the move (unit, widget, golden, howto, integration).
-- No cross-feature imports from one feature’s support into another feature’s tests.
-- Generic helpers contain no domain imports (no `Display`, no feature models).
-- Domain helpers import only their feature’s types/providers.
-- Testing guide documents the structure and when to use each helper type.
+✅ **Clean Separation**: Generic utilities have zero domain dependencies  
+✅ **Purpose-Built Notifiers**: Replaced direct state manipulation with deterministic notifiers:
+  - `_LoadingDisplays` - Never completes build (stable loading state)
+  - `_SuccessDisplays` - Immediate AsyncData
+  - `_ErrorDisplays` - Throws in build (AsyncError)
+  
+✅ **Comprehensive Documentation**: Added README files with usage examples  
+✅ **FakeScreenService Decision**: Kept in `lib/` with clear documentation about dual purpose (testing + development/demos)  
+✅ **Test Stability**: All 78 tests passing after refactor
 
-### 6b.3 TDD/Process
+### 6b.3 Code Review Fixes
 
-1) Add empty `test/support/` and `test/features/displays/support/` files with exports.
-2) Move generic helpers (matchers/pump) first; run subset of tests that rely only on them.
-3) Move displays fixtures/overrides; fix imports in displays tests; run those tests.
-4) Decide on `FakeScreenService` location: if used in examples/demos keep in `lib/` (document); if test-only, move under `test/features/displays/support/fakes/` and adapt imports.
-5) Update `flutter-testing-guide.md` with recommended layout and rationale.
+After initial implementation, addressed review findings:
+1. **Removed duplicate pump helper** - Eliminated private `_ContainerPump` extension in transitions.dart
+2. **Added README documentation** - Created comprehensive guides for both support directories
+3. **Documented test-only behavior** - Added notes about FakeScreenService returning `[]` for empty configs
+4. **Skipped barrel exports** - Intentionally avoided index.dart files for explicit dependency tracking
 
-### 6b.4 Risks/Mitigations
+### 6b.4 Benefits Realized
 
-- Import churn causing transient failures → Mitigation: move in small steps, run tests after each move.
-- Hidden cross-feature coupling → Mitigation: grep for imports and add a short lint note in docs discouraging cross-feature support usage.
+- **Discoverability**: Clear folder structure makes finding helpers intuitive
+- **Maintainability**: New features won't pollute existing test utilities
+- **Type Safety**: Generic helpers use proper type parameters
+- **No Cross-Feature Leakage**: Display helpers isolated to display tests
+- **Deterministic Tests**: Purpose-built notifiers eliminate race conditions
 
-### 6b.5 Implementation Notes
+### 6b.5 Lessons Learned
 
-- Keep file names descriptive: `<feature>_fixtures.dart`, `<feature>_overrides.dart`.
-- Prefer explicit exports over barrel files to avoid accidental exposure.
-- Avoid wildcard imports in tests; prefer explicit symbols for clarity.
+- **Avoid State Manipulation**: Purpose-built notifiers are more reliable than `state = AsyncLoading()`
+- **Document Dual-Purpose Code**: FakeScreenService serves both testing and development needs
+- **Explicit Over Implicit**: Avoided barrel files to maintain clear import dependencies
+- **Test Behavior Differences**: Document where test services differ from production (e.g., no delays)
 
 ---
 

@@ -18,7 +18,9 @@ When creating Mermaid diagrams in documentation:
 **CRITICAL**: Always read these files before working on the codebase:
 
 - `docs/rules/rules-idioms-architecture.md` - Core architectural rules and layer separation principles, project patterns, testing strategies, and code quality standards
-- `docs/rules/service-layer.md` - Service layer design: repository/service contracts, strict MethodChannel boundaries, explicit error handling (`Result`) and DI patterns that make platform integrations testable and keep UI/Pods free of native/plugin concepts.
+- `docs/rules/service-layer.md` - Service layer design: repository/service contracts, strict MethodChannel boundaries, explicit error handling (`Result`) and DI patterns that make platform integrations testable and keep UI/Pods free of native/plugin concepts
+- `docs/rules/riverpod.md` - Riverpod 2.x architecture guide: state management patterns, dependency injection, reactive programming with code generation
+- `docs/rules/flutter-testing-guide.md` - Comprehensive testing playbook: unit, widget, integration tests with Riverpod, Freezed, and result_dart patterns
 
 
 ## Project Rules and Workflow

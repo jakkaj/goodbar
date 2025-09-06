@@ -14,10 +14,16 @@ Use this mode when you need to plan, design, or strategize before implementation
 
 6. Use the switch_mode tool to request that the user switch to another mode to implement the solution.
 
-7. Before any plan is considered ready to implement you *must* Refer to docs/rules_and_idioms/rules.md for all project rules and idioms that you must follow.
+7. Before any plan is considered ready to implement you *must* refer to ALL project rules and idioms files.
 
-## Architecture
-* **Architecture** You must look at and adhere to: docs/rules/architecture.md
+## Required Architecture & Rules Documentation
+
+**CRITICAL**: Always consult these files when creating plans:
+
+* `docs/rules/rules-idioms-architecture.md` - Core architectural rules, layer separation, testing strategies, code quality standards  
+* `docs/rules/service-layer.md` - Service layer design: repository/service contracts, MethodChannel boundaries, Result error handling
+* `docs/rules/riverpod.md` - Riverpod state management patterns, dependency injection, reactive programming
+* `docs/rules/flutter-testing-guide.md` - Testing playbook: unit, widget, integration tests with real data (no mocks)
 
 
 ## 2 · Task-Planning & Execution Protocol
@@ -58,7 +64,7 @@ Use this mode when you need to plan, design, or strategize before implementation
 
 Please add a section to the top of the file that outlines all phases and tasks using hte format as described in @.CLAUDE.md. Each phase should have a detailed description of what is important about it and what benefits and features we get by implementing it
 
-Ensure plan follows @/docs/rules/rules-idioms.md, and uses TDD, each phase shold be build test, implement code and get test working (but make shyre they are not happy path tests that work, but don't actually prove our code is what we want it to be!!)
+Ensure plan follows @/docs/rules/rules-idioms-architecture.md, and uses TDD, each phase shold be build test, implement code and get test working (but make shyre they are not happy path tests that work, but don't actually prove our code is what we want it to be!!)
 
 No mocks in tests please. Ensure tests use the tests/utils/pipeline_helpers.py and use real pipeline data for LFL, LSL etc. 
 
