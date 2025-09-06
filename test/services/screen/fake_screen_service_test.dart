@@ -24,8 +24,8 @@ void main() {
       
       final result = await service.getDisplays();
       
-      result.when(
-        success: (displays) {
+      result.fold(
+        (displays) {
           expect(displays.length, equals(3),
             reason: 'Default configuration should have 3 displays');
           
@@ -38,7 +38,7 @@ void main() {
           expect(ids.length, equals(3),
             reason: 'All displays should have unique IDs');
         },
-        failure: (error) => fail('Should provide default displays: $error'),
+        (error) => fail('Should provide default displays: $error'),
       );
     });
     
@@ -59,13 +59,13 @@ void main() {
       service = FakeScreenService(displays: [customDisplay]);
       
       final result = await service.getDisplays();
-      result.when(
-        success: (displays) {
+      result.fold(
+        (displays) {
           expect(displays.length, equals(1));
           expect(displays.first.id, equals('custom'));
           expect(displays.first.bounds.width, equals(800));
         },
-        failure: (error) => fail('Should return custom display: $error'),
+        (error) => fail('Should return custom display: $error'),
       );
     });
     
@@ -76,12 +76,12 @@ void main() {
       
       final result = await service.getPrimaryDisplay();
       
-      result.when(
-        success: (display) {
+      result.fold(
+        (display) {
           expect(display.isPrimary, isTrue);
           expect(display.id, equals('1')); // Default primary
         },
-        failure: (error) => fail('Should return primary display: $error'),
+        (error) => fail('Should return primary display: $error'),
       );
     });
     
@@ -92,12 +92,12 @@ void main() {
       
       final result = await service.getDisplay('2');
       
-      result.when(
-        success: (display) {
+      result.fold(
+        (display) {
           expect(display.id, equals('2'));
           expect(display.isPrimary, isFalse);
         },
-        failure: (error) => fail('Should return display 2: $error'),
+        (error) => fail('Should return display 2: $error'),
       );
     });
     
@@ -108,10 +108,10 @@ void main() {
       
       final result = await service.getDisplay('non-existent');
       
-      result.when(
-        success: (_) => fail('Should not find non-existent display'),
-        failure: (error) {
-          expect(error, contains('not found'));
+      result.fold(
+        (_) => fail('Should not find non-existent display'),
+        (error) {
+          expect(error.message, contains('not found'));
         },
       );
     });
@@ -144,12 +144,12 @@ void main() {
       
       // Verify getDisplays returns new configuration
       final result = await service.getDisplays();
-      result.when(
-        success: (displays) {
+      result.fold(
+        (displays) {
           expect(displays.length, equals(1));
           expect(displays.first.id, equals('new'));
         },
-        failure: (error) => fail('Should return new configuration: $error'),
+        (error) => fail('Should return new configuration: $error'),
       );
     });
     
@@ -176,12 +176,12 @@ void main() {
       expect(event.displays.length, equals(4)); // 3 default + 1 new
       
       final result = await service.getDisplays();
-      result.when(
-        success: (displays) {
+      result.fold(
+        (displays) {
           expect(displays.length, equals(4));
           expect(displays.any((d) => d.id == '4'), isTrue);
         },
-        failure: (error) => fail('Should include new display: $error'),
+        (error) => fail('Should include new display: $error'),
       );
     });
     
@@ -200,12 +200,12 @@ void main() {
       expect(event.displays.length, equals(2)); // 3 default - 1 removed
       
       final result = await service.getDisplays();
-      result.when(
-        success: (displays) {
+      result.fold(
+        (displays) {
           expect(displays.length, equals(2));
           expect(displays.any((d) => d.id == '3'), isFalse);
         },
-        failure: (error) => fail('Should have removed display: $error'),
+        (error) => fail('Should have removed display: $error'),
       );
     });
     
@@ -218,18 +218,18 @@ void main() {
       service = FakeScreenService(displays: []);
       
       final displaysResult = await service.getDisplays();
-      displaysResult.when(
-        success: (_) => fail('Should fail with no displays'),
-        failure: (error) {
-          expect(error, contains('No displays available'));
+      displaysResult.fold(
+        (_) => fail('Should fail with no displays'),
+        (error) {
+          expect(error.message, contains('No displays available'));
         },
       );
       
       final primaryResult = await service.getPrimaryDisplay();
-      primaryResult.when(
-        success: (_) => fail('Should fail with no primary display'),
-        failure: (error) {
-          expect(error, contains('No primary display found'));
+      primaryResult.fold(
+        (_) => fail('Should fail with no primary display'),
+        (error) {
+          expect(error.message, contains('No primary display found'));
         },
       );
     });

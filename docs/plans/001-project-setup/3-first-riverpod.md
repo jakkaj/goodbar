@@ -1,12 +1,14 @@
 # Canonical Riverpod Implementation Plan: First Look at DI & State Management
 
-## Progress Summary (Last Updated: COMPLETE)
+## Progress Summary (Last Updated: Phase 6a COMPLETE)
 - [x] Phase 1: Infrastructure Setup - COMPLETE
 - [x] Phase 2: Migrate Error Handling - COMPLETE
 - [x] Phase 3: Service Layer DI - COMPLETE
 - [x] Phase 4: Create Simple Display UI - COMPLETE
 - [x] Phase 5: Update Main App - COMPLETE
-- [ ] Phase 6: Testing - NOT STARTED (next step)
+- [x] Phase 6: Testing - COMPLETE
+- [x] Phase 6a: Address Code Review Findings - COMPLETE
+- [ ] Phase 6b: Test Utilities Domain Separation - NOT STARTED
 
 ## Implementation Complete
 
@@ -50,7 +52,7 @@ The app is now running with Riverpod. We successfully established canonical patt
 
 ## Implementation Phases
 
-## Phase 1: Infrastructure Setup (30 min) COMPLETE
+## Phase 1: Infrastructure Setup COMPLETE
 
 | Task | File | Status | Notes |
 |------|------|--------|-------|
@@ -78,7 +80,7 @@ dev_dependencies:
 
 ---
 
-## Phase 2: Migrate Error Handling (45 min) COMPLETE
+## Phase 2: Migrate Error Handling COMPLETE
 
 | Task | File | Status | Notes |
 |------|------|--------|-------|
@@ -114,7 +116,7 @@ final class UnknownScreenFailure extends ScreenFailure {
 
 ---
 
-## Phase 3: Service Layer DI (30 min) COMPLETE
+## Phase 3: Service Layer DI COMPLETE
 
 | Task | File | Status | Notes |
 |------|------|--------|-------|
@@ -134,7 +136,7 @@ ScreenService screenService(ScreenServiceRef ref) {
 
 ---
 
-## Phase 4: Create Simple Display UI (30 min) COMPLETE
+## Phase 4: Create Simple Display UI COMPLETE
 
 | Task | File | Status | Notes |
 |------|------|--------|-------|
@@ -218,7 +220,7 @@ class Displays extends _$Displays {
 
 ---
 
-## Phase 5: Update Main App (15 min) COMPLETE
+## Phase 5: Update Main App COMPLETE
 
 | Task | File | Status | Notes |
 |------|------|--------|-------|
@@ -261,32 +263,33 @@ class MyApp extends ConsumerWidget {
 
 ---
 
-## Phase 6: Canonical Testing Implementation (2-3 hours)
+## Phase 6: Canonical Testing Implementation
 
 Based on `docs/rules/flutter-testing-guide.md` and `docs/rules/rules-idioms-architecture.md`, this phase establishes comprehensive testing patterns that serve as both validation and executable documentation.
 
 | Task | File | Status | Notes |
 |------|------|--------|-------|
-| 6.1 Test helpers | `test/helpers/test_helpers.dart` | [ ] | AsyncValue matchers, display builders, container utilities |
-| 6.2 Mock providers | `test/helpers/mock_providers.dart` | [ ] | Test-specific provider implementations |
-| 6.3 Unit: Provider tests | `test/unit/providers/displays_provider_test.dart` | [ ] | All state transitions, DI, error handling |
-| 6.4 Unit: Model tests | `test/unit/models/display_model_test.dart` | [ ] | Freezed equality, copyWith, JSON |
-| 6.5 Widget tests | `test/widget/displays_screen_test.dart` | [ ] | All AsyncValue states, user interactions |
-| 6.6 Golden tests | `test/widget/displays_screen_golden_test.dart` | [ ] | Visual regression with Alchemist |
-| 6.7 HowTo test | `test/howto/display_detection_workflow_test.dart` | [ ] | Executable documentation of complete workflow |
-| 6.8 Integration test | `integration_test/displays_integration_test.dart` | [ ] | Real macOS platform channels |
+| 6.1 Test helpers | `test/helpers/test_helpers.dart` | [x] | AsyncValue matchers, display builders, container utilities [^16] |
+| 6.2 Mock providers | `test/helpers/mock_providers.dart` | [x] | Test-specific provider implementations [^17] |
+| 6.3 Unit: Provider tests | `test/providers/displays_provider_test.dart` | [x] | All state transitions, DI, error handling [^18] |
+| 6.4 Unit: Model tests | `test/core/models/display_freezed_test.dart` | [x] | Freezed equality, copyWith, JSON [^19] |
+| 6.5 Widget tests | `test/widgets/displays_screen_test.dart` | [x] | All AsyncValue states, user interactions [^20] |
+| 6.6 Golden tests | `test/golden/displays_golden_test.dart` | [x] | Visual regression with golden_toolkit [^21] |
+| 6.7 HowTo test | `test/howto/display_detection_workflow_test.dart` | [x] | Executable documentation of complete workflow [^22] |
+| 6.8 Integration test | `integration_test/displays_integration_test.dart` | [x] | Real macOS platform channels [^23] |
 
 ### 6.1 Test Structure
 ```
 test/
-  unit/
-    providers/
-      displays_provider_test.dart          # Provider state transitions
+  providers/
+    displays_provider_test.dart            # Provider state transitions
+  core/
     models/
-      display_model_test.dart              # Freezed model tests
-  widget/
+      display_freezed_test.dart            # Freezed model tests
+  widgets/
     displays_screen_test.dart              # UI state handling
-    displays_screen_golden_test.dart       # Visual regression
+  golden/
+    displays_golden_test.dart              # Visual regression
   helpers/
     test_helpers.dart                      # Shared utilities
     mock_providers.dart                    # Test-specific providers
@@ -295,6 +298,71 @@ test/
 integration_test/
   displays_integration_test.dart           # Real macOS interaction
 ```
+
+---
+
+## Phase 6b: Test Utilities Domain Separation
+
+Establish clear separation between generic test utilities and feature-specific (domain) helpers to improve modularity, discoverability, and prevent cross-feature leakage. Aligns with architecture layering and testing rules.
+
+| Task | File/Area | Status | Notes |
+|------|-----------|--------|-------|
+| 6b.1 Create generic support folder | `test/support/` | [ ] | Move domain-agnostic tools: AsyncValue matchers, pump utilities [^6b1] |
+| 6b.2 Extract displays fixtures | `test/features/displays/support/fixtures.dart` | [ ] | Move `DisplayBuilders`, `TestScenarios`, `DisplayAssertions` [^6b2] |
+| 6b.3 Extract displays overrides | `test/features/displays/support/overrides.dart` | [ ] | Move `MockProviders`, `MockContainers`, `StateTransitions` [^6b3] |
+| 6b.4 Scope fakes under displays | `test/features/displays/support/fakes/` | [ ] | If `FakeScreenService` is test-only, relocate; else keep in `lib/` and document [^6b4] |
+| 6b.5 Update imports in tests | `test/**/*` | [ ] | All tests compile with new paths, no wildcard imports [^6b5] |
+| 6b.6 Update testing guide | `docs/rules/flutter-testing-guide.md` | [ ] | Document recommended test folder layout and patterns [^6b6] |
+
+### 6b.1 Target Layout
+
+```
+test/
+  support/                        # Generic, cross-feature utilities
+    matchers.dart                 # isLoading/isData/isError*, generic
+    pump.dart                     # pump, pumpUntil, helpers
+    riverpod_overrides.dart       # tiny helpers for overrides (optional)
+
+  features/
+    displays/
+      support/                    # Domain-specific helpers (scoped)
+        fixtures.dart             # DisplayBuilders, TestScenarios, assertions
+        overrides.dart            # MockProviders, MockContainers, transitions
+        fakes/
+          fake_screen_service.dart (optional move)
+
+  unit/|widget/|goldens/|howto/   # Existing tests continue to live here or
+                                  # may be migrated to features/*/ if preferred
+```
+
+### 6b.2 Success Criteria
+
+- All tests pass after the move (unit, widget, golden, howto, integration).
+- No cross-feature imports from one feature’s support into another feature’s tests.
+- Generic helpers contain no domain imports (no `Display`, no feature models).
+- Domain helpers import only their feature’s types/providers.
+- Testing guide documents the structure and when to use each helper type.
+
+### 6b.3 TDD/Process
+
+1) Add empty `test/support/` and `test/features/displays/support/` files with exports.
+2) Move generic helpers (matchers/pump) first; run subset of tests that rely only on them.
+3) Move displays fixtures/overrides; fix imports in displays tests; run those tests.
+4) Decide on `FakeScreenService` location: if used in examples/demos keep in `lib/` (document); if test-only, move under `test/features/displays/support/fakes/` and adapt imports.
+5) Update `flutter-testing-guide.md` with recommended layout and rationale.
+
+### 6b.4 Risks/Mitigations
+
+- Import churn causing transient failures → Mitigation: move in small steps, run tests after each move.
+- Hidden cross-feature coupling → Mitigation: grep for imports and add a short lint note in docs discouraging cross-feature support usage.
+
+### 6b.5 Implementation Notes
+
+- Keep file names descriptive: `<feature>_fixtures.dart`, `<feature>_overrides.dart`.
+- Prefer explicit exports over barrel files to avoid accidental exposure.
+- Avoid wildcard imports in tests; prefer explicit symbols for clarity.
+
+---
 
 ### 6.2 Key Testing Patterns
 
@@ -404,7 +472,6 @@ expect(states.map((s) => s.runtimeType), [
 - **Real platform validation**: No mocks
   - Actual display detection via MethodChannel
   - Verify 3 connected displays
-  - Performance < 500ms
   - Correct display properties (bounds, scale, etc.)
 
 #### HowTo Tests (test/howto/)
@@ -621,6 +688,47 @@ integration_test/displays_integration_test.dart
 
 ---
 
+## Phase 6a: Address Code Review Findings
+
+Based on the comprehensive code review in `scratch/phase-6-review.md`, these issues need to be addressed to ensure correctness, stability, and consistency.
+
+### Priority 1: Critical Fixes (Correctness & Memory Safety)
+
+| Task | File | Status | Notes |
+|------|------|--------|-------|
+| 6a.1 Fix menuBarHeight units | `test/core/models/display_freezed_test.dart` | [x] | Change expectation from 50 to 25 (points not pixels) [^24] |
+| 6a.2 Fix memory leak | `test/helpers/test_helpers.dart` | [x] | Remove global `_subscriptions`, use per-test cleanup [^25] |
+| 6a.3 Fix documentation | `docs/rules/rules-idioms-architecture.md` | [x] | Update to match AsyncValue<T> pattern, not AsyncValue<Result> [^26] |
+
+### Priority 2: Test Stability Improvements
+
+| Task | File | Status | Notes |
+|------|------|--------|-------|
+| 6a.4 Add widget keys | `lib/src/widgets/displays_screen.dart` | [x] | Add semantic keys for test stability [^27] |
+| 6a.5 Update widget tests | `test/widgets/displays_screen_test.dart` | [x] | Use find.byKey instead of text selectors [^28] |
+| 6a.6 Golden strategy | `test/golden/displays_golden_test.dart` | [x] | Document golden_toolkit or migrate to Alchemist [^29] |
+
+### Priority 3: Consistency & Documentation
+
+| Task | File | Status | Notes |
+|------|------|--------|-------|
+| 6a.7 Directory naming | `docs/plans/001-project-setup/3-first-riverpod.md` | [x] | Update plan to match test/widgets/ convention [^30] |
+| 6a.8 State assertions | `test/providers/displays_provider_test.dart` | [x] | Use containsAllInOrder for sequences [^31] |
+
+### Key Issues Identified
+
+**1. Units Confusion:** The `menuBarHeight` test expects pixel values but the model returns points. Must standardize on points (logical units) for consistency.
+
+**2. Memory Management:** Global subscription list in test_helpers can leak across tests. Need container-scoped or per-test cleanup.
+
+**3. Documentation Drift:** Architecture rules suggest `AsyncValue<Result<T,E>>` but implementation uses the more idiomatic `AsyncValue<T>` with errors thrown in build().
+
+**4. Test Fragility:** Widget tests rely on text content which can change. Need stable key-based selectors.
+
+**5. CI Stability:** Golden tests using golden_toolkit may drift across OS. Consider Alchemist for deterministic snapshots.
+
+---
+
 ## Actual Timeline
 
 | Phase | Status | Notes |
@@ -630,7 +738,8 @@ integration_test/displays_integration_test.dart
 | Phase 3: Service DI | ✅ Complete | Providers with logger injection |
 | Phase 4: Simple Display UI | ✅ Complete | DisplaysScreen with AsyncValue |
 | Phase 5: Update Main App | ✅ Complete | App running with Riverpod |
-| Phase 6: Testing | ⏳ Next Step | Provider test patterns established |
+| Phase 6: Testing | ✅ Complete | Canonical testing patterns established |
+| Phase 6a: Review Fixes | ⏳ Next Step | Address code review findings |
 
 ---
 
@@ -683,3 +792,35 @@ integration_test/displays_integration_test.dart
 [^14]: Fixed freezed models [`lib/src/core/models/display.dart`](../../../lib/src/core/models/display.dart) and [`lib/src/core/models/geometry.dart`](../../../lib/src/core/models/geometry.dart) - Changed from `class` to `sealed class` for freezed v3 compatibility.
 
 [^15]: Removed unused `lib/src/core/models/result.dart` - We use result_dart package instead of custom freezed Result type.
+
+[^16]: Created [`test/helpers/test_helpers.dart`](../../../test/helpers/test_helpers.dart) - Custom AsyncValue matchers (isLoading, isData, isError), DisplayBuilders for test data, TestContainers for DI setup, and AsyncProviderTestExtensions for state collection. Fixed TypeMatcher predicate issue and ProviderOverride → Override type.
+
+[^17]: Created [`test/helpers/mock_providers.dart`](../../../test/helpers/mock_providers.dart) - MockProviders factory for loading/success/error states, MockContainers for pre-configured test environments, StateTransitions helpers for simulating state changes, and TestScenarios with realistic display configurations.
+
+[^18]: Created [`test/providers/displays_provider_test.dart`](../../../test/providers/displays_provider_test.dart) - Comprehensive AsyncNotifier testing including initial build transitions, Result→AsyncValue transformation, refresh() method, error handling for all failure types, getDisplay/getPrimaryDisplay methods, and DI verification.
+
+[^19]: Created [`test/core/models/display_freezed_test.dart`](../../../test/core/models/display_freezed_test.dart) - Freezed model testing for copyWith immutability, equality/hashCode, computed properties (width, height, menuBarHeight), Rectangle geometry (edges, center, contains), and real-world display configurations.
+
+[^20]: Created [`test/widgets/displays_screen_test.dart`](../../../test/widgets/displays_screen_test.dart) - Widget testing for all AsyncValue UI states (loading, data, error), user interactions (refresh, retry), empty state handling, provider integration with overrides, and accessibility verification.
+
+[^21]: Created [`test/golden/displays_golden_test.dart`](../../../test/golden/displays_golden_test.dart) - Visual regression testing using golden_toolkit for loading/error/data states, light/dark theme variations, responsive layouts (narrow/wide screens), edge cases, and component-level display cards.
+
+[^22]: Created [`test/howto/display_detection_workflow_test.dart`](../../../test/howto/display_detection_workflow_test.dart) - Executable documentation demonstrating complete DI workflow, all AsyncValue state transitions, error handling and recovery, display hot-plug simulation, specific display queries, and stream-based monitoring.
+
+[^23]: Created [`integration_test/displays_integration_test.dart`](../../../integration_test/displays_integration_test.dart) - Real macOS platform testing for actual display detection, display property validation, memory leak detection, and multi-display scenarios.
+
+[^24]: Modified [`test/core/models/display_freezed_test.dart`](../../../test/core/models/display_freezed_test.dart#L172) - Fixed menuBarHeight test expectation from 50 to 25. The property returns points (logical units), not pixels. Comment corrected to "workArea.y(25) - bounds.y(0) = 25 points".
+
+[^25]: Modified [`test/helpers/test_helpers.dart`](../../../test/helpers/test_helpers.dart#L162) - Removed global `_subscriptions` list that was causing memory leak across tests. Simplified `collectStates` to rely on automatic cleanup when ProviderContainer is disposed. Added documentation about state assertion patterns.
+
+[^26]: Modified [`docs/rules/rules-idioms-architecture.md`](../../../docs/rules/rules-idioms-architecture.md#L94) - Updated error handling documentation to reflect correct pattern: services return `Result<T, Failure>`, providers expose `AsyncValue<T>` (not `AsyncValue<Result<T, Failure>>`). Added code example showing proper Result.fold transformation to AsyncError via throw.
+
+[^27]: Modified [`lib/src/widgets/displays_screen.dart`](../../../lib/src/widgets/displays_screen.dart#L24) - Added semantic keys throughout: `refresh_button`, `displays_loading`, `displays_error`, `retry_button`, `displays_empty`, and `display_card_${id}`. Also fixed deprecated `withOpacity` to use `withValues(alpha:)`.
+
+[^28]: Modified [`test/widgets/displays_screen_test.dart`](../../../test/widgets/displays_screen_test.dart#L38) - Updated all test finders to use semantic keys instead of text-based selectors. Changed from `find.text()` and `find.byIcon()` to `find.byKey()` for more stable test selectors that won't break with UI text changes.
+
+[^29]: Modified [`test/golden/displays_golden_test.dart`](../../../test/golden/displays_golden_test.dart#L1) - Added comprehensive documentation about golden test strategy, CI configuration requirements, updating process, and future migration path to Alchemist for better cross-platform stability.
+
+[^30]: Modified [`docs/plans/001-project-setup/3-first-riverpod.md`](../../../docs/plans/001-project-setup/3-first-riverpod.md#L279) - Updated test structure documentation to match actual directory layout: `test/widgets/` instead of `test/widget/`, `test/providers/` instead of `test/unit/providers/`, etc.
+
+[^31]: Modified [`test/providers/displays_provider_test.dart`](../../../test/providers/displays_provider_test.dart#L104) and [`test/helpers/test_helpers.dart`](../../../test/helpers/test_helpers.dart#L164) - Added `containsAllInOrder` for state sequence assertions and documented when to use it vs direct list equality. Provides better error messages and handles intermediate states.

@@ -91,9 +91,32 @@ flowchart LR
 
 **Async & Errors**
 
-* Model fallible operations as `Result<T, Failure>` (Freezed union).
-* Expose `AsyncValue<Result<T, Failure>>` from providers for IO flows.
-* Never throw across provider boundaries; convert to `Failure`.
+* Model fallible operations as `Result<T, Failure>` in service layer.
+* Expose `AsyncValue<T>` from providers (not `AsyncValue<Result<T, Failure>>`).
+* Transform `Result.failure` to `AsyncError` in providers via throw.
+
+```dart
+// ✅ GOOD - Service returns Result, provider exposes AsyncValue<T>
+@riverpod
+class Displays extends _$Displays {
+  @override
+  FutureOr<List<Display>> build() async {
+    final service = ref.watch(screenServiceProvider);
+    final result = await service.getDisplays(); // Result<List<Display>, Failure>
+    
+    return result.fold(
+      (displays) => displays,           // Success → return data
+      (failure) => throw failure,        // Failure → throw (becomes AsyncError)
+    );
+  }
+}
+
+// ❌ BAD - Don't expose AsyncValue<Result<T, E>>
+@riverpod
+Future<Result<List<Display>, Failure>> badDisplays(ref) async {
+  // This pattern breaks AsyncValue.when() ergonomics
+}
+```
 
 **Immutability**
 
@@ -708,6 +731,28 @@ ref.watch(runningWindowsProvider(displayId)).when(
   loading: () => const LinearProgressIndicator(),
   error: (e, st) => ErrorBanner(e.toString()),
 );
+```
+
+---
+
+## Testing Principles
+
+### No Performance Testing
+**Never include performance benchmarks or timing assertions in tests.** Performance testing is unreliable across different hardware, CI environments, and system loads. Instead:
+- Focus on correctness and behavior
+- Test functionality, not speed
+- Verify operations complete, not how fast they complete
+- Performance monitoring belongs in production observability, not tests
+
+Examples of what to avoid:
+```dart
+// ❌ BAD - Performance testing is unreliable
+expect(startupTime, lessThan(3000));
+expect(refreshTime, lessThan(1000));
+
+// ✅ GOOD - Test completion, not timing
+await tester.pumpAndSettle();
+expect(find.byType(DisplaysScreen), findsOneWidget);
 ```
 
 ---

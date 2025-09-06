@@ -41,6 +41,7 @@ class DisplaysScreen extends ConsumerWidget {
           ),
         ),
         error: (error, stackTrace) => Center(
+          key: const Key('displays_error'),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -64,6 +65,7 @@ class DisplaysScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
+                  key: const Key('retry_button'),
                   onPressed: () {
                     ref.read(displaysProvider.notifier).refresh();
                   },
@@ -75,6 +77,7 @@ class DisplaysScreen extends ConsumerWidget {
         ),
         data: (displays) => displays.isEmpty
             ? const Center(
+                key: Key('displays_empty'),
                 child: Text('No displays detected'),
               )
             : ListView.builder(
@@ -83,6 +86,7 @@ class DisplaysScreen extends ConsumerWidget {
                 itemBuilder: (context, index) {
                   final display = displays[index];
                   return Card(
+                    key: Key('display_card_${display.id}'),
                     margin: const EdgeInsets.only(bottom: 16),
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -107,7 +111,7 @@ class DisplaysScreen extends ConsumerWidget {
                                 Chip(
                                   label: const Text('Primary'),
                                   backgroundColor:
-                                      Theme.of(context).primaryColor.withOpacity(0.2),
+                                      Theme.of(context).primaryColor.withValues(alpha: 0.2),
                                 ),
                               ],
                             ],
