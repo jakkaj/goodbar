@@ -5,8 +5,12 @@ import 'package:goodbar/src/core/failures/screen_failures.dart';
 import 'package:goodbar/src/providers/displays_provider.dart';
 import 'package:goodbar/src/providers/services.dart';
 import 'package:goodbar/src/services/screen/fake_screen_service.dart';
-import '../helpers/test_helpers.dart';
-import '../helpers/mock_providers.dart';
+import '../support/async_value_matchers.dart';
+import '../support/container_helpers.dart';
+import '../features/displays/support/fixtures.dart';
+import '../features/displays/support/scenarios.dart';
+import '../features/displays/support/failures.dart';
+import '../features/displays/support/assertions.dart';
 
 void main() {
   group('DisplaysProvider', () {

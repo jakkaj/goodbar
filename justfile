@@ -45,9 +45,6 @@ check: fix fmt lint
 test:
   flutter test --coverage
 
-# Update golden test baselines
-golden-update:
-  flutter test --update-goldens
 
 # ---------- Run / Build ----------
 # Run app on macOS

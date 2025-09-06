@@ -5,10 +5,29 @@ import 'package:goodbar/src/core/failures/screen_failures.dart';
 import 'package:goodbar/src/services/screen/screen_service.dart';
 import 'package:result_dart/result_dart.dart';
 
-/// Fake implementation of ScreenService for testing.
+/// Fake implementation of ScreenService for testing and development.
 /// 
-/// Provides controllable display configurations for unit tests
-/// and widget tests without requiring platform channel access.
+/// This service lives in the production codebase rather than test/
+/// for several important reasons:
+/// 
+/// 1. **Development Mode**: Can be used during development to simulate
+///    different display configurations without physical monitors.
+/// 
+/// 2. **Demo/Example Apps**: Useful for creating reproducible demos
+///    or examples that don't require actual hardware.
+/// 
+/// 3. **Provider Integration**: Has a dedicated provider in services.dart
+///    (`fakeScreenServiceProvider`) allowing easy switching between
+///    real and fake implementations.
+/// 
+/// 4. **Widget Preview**: Can be used in tools like Widgetbook or
+///    Flutter's widget preview to show different display scenarios.
+/// 
+/// For testing, this service provides:
+/// - Controllable display configurations
+/// - Failure simulation
+/// - Stream-based display change events
+/// - Deterministic behavior (no async delays)
 class FakeScreenService implements ScreenService {
   List<Display> _displays;
   ScreenFailure? _failure;
@@ -103,22 +122,23 @@ class FakeScreenService implements ScreenService {
   
   @override
   Future<Result<List<Display>, ScreenFailure>> getDisplays() async {
-    // Simulate async operation
-    await Future.delayed(const Duration(milliseconds: 10));
+    // Simulate async operation without introducing pending timers in tests
+    // (returning immediately keeps widget tests deterministic)
     
     if (_failure != null) {
       return Failure(_failure!);
     }
     
     if (_displays.isEmpty) {
-      return Failure(PlatformChannelFailure('No displays available'));
+      // For testing UI empty states, return success with empty list
+      return Success(const <Display>[]);
     }
     return Success(List.unmodifiable(_displays));
   }
   
   @override
   Future<Result<Display, ScreenFailure>> getDisplay(String displayId) async {
-    await Future.delayed(const Duration(milliseconds: 10));
+    // Return immediately for deterministic tests
     
     if (_failure != null) {
       return Failure(_failure!);
@@ -134,7 +154,7 @@ class FakeScreenService implements ScreenService {
   
   @override
   Future<Result<Display, ScreenFailure>> getPrimaryDisplay() async {
-    await Future.delayed(const Duration(milliseconds: 10));
+    // Return immediately for deterministic tests
     
     if (_failure != null) {
       return Failure(_failure!);

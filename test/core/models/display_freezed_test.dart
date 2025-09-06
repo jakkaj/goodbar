@@ -1,7 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:goodbar/src/core/models/display.dart';
 import 'package:goodbar/src/core/models/geometry.dart';
-import '../../helpers/test_helpers.dart';
+import '../../features/displays/support/fixtures.dart';
+import '../../features/displays/support/assertions.dart';
 
 void main() {
   group('Display Freezed Model', () {
@@ -280,8 +281,9 @@ void main() {
         expect(externals.length, 2);
         expect(externals.every((d) => d.menuBarHeight == 0), isTrue);
         
-        // Verify no overlapping displays
-        DisplayAssertions.assertDisplayArrangement(displays);
+        // Verify display arrangement is valid
+        DisplayAssertions.assertSinglePrimary(displays);
+        DisplayAssertions.assertValidPositioning(displays);
       });
       
       test('handles edge cases like vertical monitors', () {

@@ -219,10 +219,11 @@ void main() {
       
       final displaysResult = await service.getDisplays();
       displaysResult.fold(
-        (_) => fail('Should fail with no displays'),
-        (error) {
-          expect(error.message, contains('No displays available'));
+        (displays) {
+          expect(displays, isEmpty,
+              reason: 'Empty configuration should return empty list');
         },
+        (error) => fail('Should not fail for empty list: ${error.message}'),
       );
       
       final primaryResult = await service.getPrimaryDisplay();

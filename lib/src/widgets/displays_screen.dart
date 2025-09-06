@@ -22,6 +22,7 @@ class DisplaysScreen extends ConsumerWidget {
         actions: [
           // Refresh button to manually reload
           IconButton(
+            key: const Key('refresh_button'),
             icon: const Icon(Icons.refresh),
             onPressed: () {
               ref.read(displaysProvider.notifier).refresh();
@@ -31,6 +32,7 @@ class DisplaysScreen extends ConsumerWidget {
       ),
       body: displaysAsync.when(
         loading: () => const Center(
+          key: Key('displays_loading'),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -80,60 +82,61 @@ class DisplaysScreen extends ConsumerWidget {
                 key: Key('displays_empty'),
                 child: Text('No displays detected'),
               )
-            : ListView.builder(
+            : SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
-                itemCount: displays.length,
-                itemBuilder: (context, index) {
-                  final display = displays[index];
-                  return Card(
-                    key: Key('display_card_${display.id}'),
-                    margin: const EdgeInsets.only(bottom: 16),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                child: Column(
+                  children: [
+                    for (final display in displays)
+                      Card(
+                        key: Key('display_card_${display.id}'),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(
-                                Icons.monitor,
-                                color: display.isPrimary
-                                    ? Theme.of(context).primaryColor
-                                    : null,
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.monitor,
+                                    color: display.isPrimary
+                                        ? Theme.of(context).primaryColor
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Display ${display.id}',
+                                    style: Theme.of(context).textTheme.titleLarge,
+                                  ),
+                                  if (display.isPrimary) ...[
+                                    const SizedBox(width: 8),
+                                    Chip(
+                                      label: const Text('Primary'),
+                                      backgroundColor: Theme.of(context)
+                                          .primaryColor
+                                          .withValues(alpha: 0.2),
+                                    ),
+                                  ],
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Display ${display.id}',
-                                style: Theme.of(context).textTheme.titleLarge,
-                              ),
-                              if (display.isPrimary) ...[
-                                const SizedBox(width: 8),
-                                Chip(
-                                  label: const Text('Primary'),
-                                  backgroundColor:
-                                      Theme.of(context).primaryColor.withValues(alpha: 0.2),
-                                ),
-                              ],
+                              const SizedBox(height: 12),
+                              _buildInfoRow('Position',
+                                  '(${display.bounds.x.toInt()}, ${display.bounds.y.toInt()})'),
+                              _buildInfoRow('Size',
+                                  '${display.bounds.width.toInt()} × ${display.bounds.height.toInt()}'),
+                              _buildInfoRow('Work Area',
+                                  '${display.workArea.width.toInt()} × ${display.workArea.height.toInt()}'),
+                              _buildInfoRow('Scale Factor', '${display.scaleFactor}×'),
+                              _buildInfoRow('Menu Bar Height',
+                                  '${display.menuBarHeight.toInt()}px'),
+                              _buildInfoRow('Dock Height',
+                                  '${display.dockHeight.toInt()}px'),
                             ],
                           ),
-                          const SizedBox(height: 12),
-                          _buildInfoRow('Position', 
-                              '(${display.bounds.x.toInt()}, ${display.bounds.y.toInt()})'),
-                          _buildInfoRow('Size', 
-                              '${display.bounds.width.toInt()} × ${display.bounds.height.toInt()}'),
-                          _buildInfoRow('Work Area', 
-                              '${display.workArea.width.toInt()} × ${display.workArea.height.toInt()}'),
-                          _buildInfoRow('Scale Factor', 
-                              '${display.scaleFactor}×'),
-                          _buildInfoRow('Menu Bar Height', 
-                              '${display.menuBarHeight.toInt()}px'),
-                          _buildInfoRow('Dock Height', 
-                              '${display.dockHeight.toInt()}px'),
-                        ],
+                        ),
                       ),
-                    ),
-                  );
-                },
+                  ],
+                ),
               ),
       ),
     );

@@ -779,6 +779,44 @@ SystemInfo systemInfo({String osVersion = 'macOS 14.5'}) =>
     SystemInfo(osVersion: osVersion);
 ```
 
+### 7.4.1 Test Organization Best Practice: Domain Separation
+
+For better modularity and to prevent cross-feature leakage, organize test helpers into generic and feature-specific directories:
+
+```
+test/
+  support/                        # Generic, cross-feature utilities
+    async_value_matchers.dart     # isLoading/isData/isError matchers
+    pump_utilities.dart           # pumpWithDelay, pumpUntil helpers
+    container_helpers.dart        # TestContainer.create() with auto-dispose
+
+  features/
+    displays/
+      support/                    # Display-specific helpers (scoped)
+        fixtures.dart             # DisplayBuilders for test data
+        scenarios.dart            # TestScenarios (laptop, docked, etc.)
+        mocks.dart                # MockProviders, MockContainers
+        assertions.dart           # DisplayAssertions.assertValidDisplay()
+        failures.dart             # TestFailures.platformChannel()
+        transitions.dart          # StateTransitions.simulateErrorRecovery()
+
+  providers/                      # Provider unit tests
+  widgets/                        # Widget tests
+  howto/                          # Executable documentation tests
+```
+
+**Key Principles:**
+- **Generic helpers** contain NO domain imports (no Display, no feature models)
+- **Domain helpers** import only their feature's types/providers
+- **No cross-feature imports** from one feature's support into another's tests
+- **FakeServices** that have production use cases stay in `lib/` with documentation
+
+**Note on FakeService Test-Only Behavior:**
+- `FakeScreenService.getDisplays()` returns an empty list `[]` for empty configurations (not an error)
+- This differs from real services which might throw or return a platform-specific error
+- This behavior enables testing empty state UI without needing error handling
+- The service has no artificial delays (immediate returns) for deterministic tests
+
 ---
 
 ## 7.5) HowTo Tests (Executable Documentation)

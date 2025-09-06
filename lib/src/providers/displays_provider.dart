@@ -16,7 +16,7 @@ part 'displays_provider.g.dart';
 /// 
 /// Testing: Override screenServiceProvider with FakeScreenService
 /// to test all scenarios including errors.
-@riverpod
+@Riverpod(keepAlive: true)
 class Displays extends _$Displays {
   @override
   FutureOr<List<Display>> build() async {
@@ -36,13 +36,17 @@ class Displays extends _$Displays {
   /// Manually refresh the display list
   Future<void> refresh() async {
     state = const AsyncLoading();
-    final service = ref.read(screenServiceProvider);
-    final result = await service.getDisplays();
-    
-    state = result.fold(
-      (displays) => AsyncData(displays),
-      (failure) => AsyncError(failure, failure.stackTrace ?? StackTrace.current),
-    );
+    // Give the UI a chance to render the loading state
+    await Future<void>.delayed(Duration.zero);
+    // Re-run build() by invalidating self; let Riverpod manage the future
+    ref.invalidateSelf();
+    // Await the new computation to finish, ignoring thrown errors since
+    // AsyncNotifier will reflect them in `state` as AsyncError
+    try {
+      await future;
+    } catch (_) {
+      // no-op: state already updated to AsyncError
+    }
   }
   
   /// Get a specific display by ID

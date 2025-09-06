@@ -8,6 +8,7 @@ part 'display.g.dart';
 sealed class Display with _$Display {
   const Display._();
   
+  @JsonSerializable(explicitToJson: true)
   const factory Display({
     required String id,
     required Rectangle bounds,
@@ -31,6 +32,7 @@ sealed class Display with _$Display {
 
 @freezed
 sealed class DisplayChangeEvent with _$DisplayChangeEvent {
+  @JsonSerializable(explicitToJson: true)
   const factory DisplayChangeEvent({
     required List<Display> displays,
     required String changeType,

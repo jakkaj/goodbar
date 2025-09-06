@@ -4,8 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:goodbar/src/widgets/displays_screen.dart';
 import 'package:goodbar/src/providers/services.dart';
 import 'package:goodbar/src/services/screen/fake_screen_service.dart';
-import '../helpers/test_helpers.dart';
-import '../helpers/mock_providers.dart';
+import '../support/async_value_matchers.dart';
+import '../features/displays/support/fixtures.dart';
+import '../features/displays/support/scenarios.dart';
+import '../features/displays/support/mocks.dart';
+import '../features/displays/support/failures.dart';
 
 void main() {
   group('DisplaysScreen Widget', () {
